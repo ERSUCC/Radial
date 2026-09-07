@@ -3,6 +3,7 @@
 #include "build.h"
 #include "exception.h"
 #include "options.h"
+#include "run.h"
 #include "utils.h"
 
 int main(int argc, char** argv)
@@ -21,11 +22,14 @@ int main(int argc, char** argv)
         switch (options.commandOptions.value()->command)
         {
             case CommandType::Build:
-            {
                 Build::run(dynamic_cast<const BuildOptions*>(options.commandOptions.value()));
 
                 break;
-            }
+
+            case CommandType::Run:
+                Run::run(dynamic_cast<const RunOptions*>(options.commandOptions.value()));
+
+                break;
         }
     }
 

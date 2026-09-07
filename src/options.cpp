@@ -8,6 +8,9 @@ CommandOptions::~CommandOptions() {}
 BuildOptions::BuildOptions() :
     CommandOptions(CommandType::Build) {}
 
+RunOptions::RunOptions() :
+    CommandOptions(CommandType::Run) {}
+
 ProgramOptions ProgramOptions::parse(char** argv, const int argc)
 {
     if (argc < 1)
@@ -54,6 +57,11 @@ ProgramOptions ProgramOptions::parse(char** argv, const int argc)
             options.commandOptions = parseBuild(argv + 1, argc - current - 1);
         }
 
+        else if (!strncmp(argv[current], "run", 4))
+        {
+            options.commandOptions = parseRun(argv + 1, argc - current - 1);
+        }
+
         else
         {
             throw RadialArgumentException("Unknown command \"" + std::string(argv[current]) + "\". Use `radial --help` for information about available commands.");
@@ -90,6 +98,43 @@ BuildOptions* ProgramOptions::parseBuild(char** argv, const int argc)
     if (argc - current > 1)
     {
         throw RadialArgumentException("Command \"build\" only accepts one positional argument. See `radial build --help` for usage instructions.");
+    }
+
+    if (current < argc)
+    {
+        options->root = argv[current];
+    }
+
+    return options;
+}
+
+RunOptions* ProgramOptions::parseRun(char** argv, const int argc)
+{
+    RunOptions* options = new RunOptions();
+
+    int current = 0;
+
+    while (current < argc)
+    {
+        if (const std::optional<std::string> flag = getFlag(argv[current]))
+        {
+            if (flag == "help")
+            {
+                throw RadialUsageException("run");
+            }
+
+            throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"run\". Use `radial run --help` for information about command options.");
+        }
+
+        else
+        {
+            break;
+        }
+    }
+
+    if (argc - current > 1)
+    {
+        throw RadialArgumentException("Command \"run\" only accepts one positional argument. See `radial run --help` for usage instructions.");
     }
 
     if (current < argc)

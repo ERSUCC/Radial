@@ -6,9 +6,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(radial src/build.cpp
+                      src/config.cpp
                       src/exception.cpp
                       src/main.cpp
                       src/options.cpp
+                      src/run.cpp
                       src/toml.cpp
                       src/utils.cpp)
 
