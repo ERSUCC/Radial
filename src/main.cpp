@@ -29,6 +29,13 @@ int main(int argc, char** argv)
         }
     }
 
+    catch (const RadialUsageException& ex)
+    {
+        std::cout << ex.what() << "\n";
+
+        return 1;
+    }
+
     catch (const RadialException& ex)
     {
         Utils::error(ex.what());
