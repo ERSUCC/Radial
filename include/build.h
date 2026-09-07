@@ -1,7 +1,8 @@
 #pragma once
 
+#include <chrono>
 #include <filesystem>
-#include <iostream>
+#include <fstream>
 #include <memory>
 #include <unordered_set>
 
@@ -35,5 +36,16 @@ private:
     static void compile(BuildEnvironment& env, const std::filesystem::path& file);
     static void link(BuildEnvironment& env, const std::filesystem::path& file);
     static void runProc(const std::string& cmd);
+
+};
+
+struct Cache
+{
+    static std::filesystem::file_time_type readTime(const BuildEnvironment& env, const std::filesystem::path& file);
+
+    static void writeTime(const BuildEnvironment& env, const std::filesystem::path& file);
+
+private:
+    static std::filesystem::path cachePath(const BuildEnvironment& env, const std::filesystem::path& file);
 
 };
