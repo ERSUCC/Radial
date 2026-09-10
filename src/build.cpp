@@ -2,7 +2,7 @@
 
 void Build::run(const BuildOptions* options)
 {
-    const std::filesystem::path root = std::filesystem::weakly_canonical(options->root.value_or(""));
+    const std::filesystem::path root = std::filesystem::weakly_canonical(options->root.value_or("."));
 
     BuildEnvironment env = BuildEnvironment::create(root);
 
