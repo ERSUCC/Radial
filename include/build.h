@@ -3,12 +3,22 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-#include <stdio.h>
 
 #include "config.h"
 #include "exception.h"
 #include "options.h"
+#include "process.h"
 #include "utils.h"
+
+#ifdef _WIN32
+
+#define OBJ_EXT ".obj"
+
+#else
+
+#define OBJ_EXT ".o"
+
+#endif
 
 struct Build
 {
@@ -18,7 +28,9 @@ struct Build
 private:
     static void compile(BuildEnvironment& env, const std::filesystem::path& file);
     static void link(BuildEnvironment& env, const std::filesystem::path& file);
-    static void runProc(const std::string& cmd);
+
+    static std::string compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
+    static std::string linkCommand(const BuildEnvironment& env, const std::filesystem::path& file);
 
 };
 

@@ -187,11 +187,6 @@ TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
 
                         break;
 
-                    case 'e':
-                        value += '\e';
-
-                        break;
-
                     case '"':
                         value += '"';
 
@@ -370,34 +365,7 @@ TOML* TOML::parse(std::istringstream& stream)
 
 TOML* TOML::parse(const std::filesystem::path& path)
 {
-    std::ifstream file(path);
-
-    if (!file.is_open())
-    {
-        throw RadialFileException("Failed to open file " + path.string() + ".");
-    }
-
-    std::string data;
-
-    while (!file.eof())
-    {
-        char buffer[1025];
-
-        file.read(buffer, 1024);
-
-        if (file.bad())
-        {
-            throw RadialFileException("Failed to read file " + path.string() + ".");
-        }
-
-        buffer[file.gcount()] = '\0';
-
-        data += buffer;
-    }
-
-    file.close();
-
-    std::istringstream stream(data);
+    std::istringstream stream(Utils::readFile(path));
 
     return TOML::parse(stream);
 }

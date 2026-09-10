@@ -10,21 +10,7 @@ void Run::run(const RunOptions* options)
 
     Utils::info("Running " + env.name);
 
-    FILE* proc = popen(("\"" + (env.dest / env.name).string() + "\"").c_str(), "r");
+    const int code = Process::run("\"" + (env.dest / env.name).string() + "\"");
 
-    if (!proc)
-    {
-        throw RadialException("Failed to create subprocess.");
-    }
-
-    char data[1025];
-
-    while (const size_t read = fread(data, sizeof(char), 1024, proc))
-    {
-        data[read] = '\0';
-
-        std::cout << data;
-    }
-
-    Utils::info("Process exited with code " + std::to_string(pclose(proc)));
+    Utils::info("Process exited with code " + std::to_string(code));
 }

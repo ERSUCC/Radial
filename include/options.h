@@ -39,7 +39,7 @@ struct ProgramOptions
 {
     static ProgramOptions parse(char** argv, const int argc);
 
-    bool version;
+    bool version = false;
 
     std::optional<CommandOptions*> commandOptions;
 

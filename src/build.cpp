@@ -25,7 +25,7 @@ void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
 {
     const std::string name = file.filename().string();
 
-    const std::filesystem::path object = env.dest / (name + ".o");
+    const std::filesystem::path object = env.dest / (name + OBJ_EXT);
 
     env.objects.insert(object);
 
@@ -38,71 +38,102 @@ void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
 
     Utils::info("Compiling " + name);
 
-    std::string cmd = "g++ -std=c++" + std::to_string(env.stdVersion) + " -c";
-
-    if (!env.includes.empty())
+    if (const int code = Process::run(compileCommand(env, file, object)))
     {
-        cmd += " -I";
-
-        for (const std::filesystem::path& include : env.includes)
-        {
-            cmd += " \"" + include.string() + "\"";
-        }
+        throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }
-
-    cmd += " -o \"" + object.string() + "\"";
-    cmd += " \"" + file.string() + "\"";
-
-    runProc(cmd);
 }
 
 void Build::link(BuildEnvironment& env, const std::filesystem::path& file)
 {
     Utils::info("Linking " + file.filename().string());
 
-    std::string cmd = "g++ -std=c++" + std::to_string(env.stdVersion) + " -o \"" + file.string() + "\"";
+    if (const int code = Process::run(linkCommand(env, file)))
+    {
+        throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
+    }
+}
+
+#ifdef _WIN32
+
+std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+{
+    std::string cmd = "\"" + env.compilerPath + "\" /std:c++" + std::to_string(env.stdVersion) + " /c";
+
+    for (const std::filesystem::path& path : env.includeDirs)
+    {
+        cmd += " /I\"" + path.string() + "\"";
+    }
+
+    cmd += " /Fo\"" + object.string() + "\" \"" + file.string() + "\"";
+
+    return cmd;
+}
+
+std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
+{
+    std::string cmd = "\"" + env.linkerPath + "\" /nologo /out:\"" + file.string() + "\"";
+
+    for (const std::filesystem::path& path : env.libDirs)
+    {
+        cmd += " /libpath:\"" + path.string() + "\"";
+    }
 
     for (const std::filesystem::path& object : env.objects)
     {
         cmd += " \"" + object.string() + "\"";
     }
 
-    runProc(cmd);
+    return cmd;
 }
 
-void Build::runProc(const std::string& cmd)
+#else
+
+std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
-    FILE* proc = popen(cmd.c_str(), "r");
+    std::string cmd = "\"" + env.compilerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -c";
 
-    if (!proc)
+    for (const std::filesystem::path& path : env.includeDirs)
     {
-        throw RadialException("Failed to create compiler subprocess.");
+        cmd += " -I \"" + path.string() + "\"";
     }
 
-    if (const int code = pclose(proc))
-    {
-        throw RadialException("Compiler exited with non-zero exit code: " + std::to_string(code));
-    }
+    cmd += " -o \"" + object.string() + "\" \"" + file.string() + "\"";
+
+    return cmd;
 }
+
+std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
+{
+    std::string cmd = "\"" + env.linkerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -o \"" + file.string() + "\"";
+
+    for (const std::filesystem::path& path : env.libDirs)
+    {
+        cmd += " -L \"" + path.string() + "\"";
+    }
+
+    for (const std::filesystem::path& object : env.objects)
+    {
+        cmd += " \"" + object.string() + "\"";
+    }
+
+    return cmd;
+}
+
+#endif
 
 std::filesystem::file_time_type Cache::readTime(const BuildEnvironment& env, const std::filesystem::path& file)
 {
-    std::ifstream cache(cachePath(env, file));
+    const std::filesystem::path path = cachePath(env, file);
 
-    if (!cache.is_open())
+    if (!std::filesystem::is_regular_file(path))
     {
         return {};
     }
 
-    char data[256];
+    const std::string data = Utils::readFile(path);
 
-    cache.read(data, 256);
-
-    data[cache.gcount()] = '\0';
-
-    cache.close();
-
-    return std::filesystem::file_time_type(std::filesystem::file_time_type::duration(atoll(data)));
+    return std::filesystem::file_time_type(std::filesystem::file_time_type::duration(atoll(data.c_str())));
 }
 
 void Cache::writeTime(const BuildEnvironment& env, const std::filesystem::path& file)
@@ -123,5 +154,5 @@ void Cache::writeTime(const BuildEnvironment& env, const std::filesystem::path& 
 
 std::filesystem::path Cache::cachePath(const BuildEnvironment& env, const std::filesystem::path& file)
 {
-    return env.dest / ".cache" / (file.filename().string() + ".txt");
+    return env.cache / (file.filename().string() + ".txt");
 }

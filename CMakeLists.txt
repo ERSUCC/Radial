@@ -10,6 +10,7 @@ add_executable(radial src/build.cpp
                       src/exception.cpp
                       src/main.cpp
                       src/options.cpp
+                      src/process.cpp
                       src/run.cpp
                       src/toml.cpp
                       src/utils.cpp)

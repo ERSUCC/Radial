@@ -1,37 +1,27 @@
 #pragma once
 
 #include <filesystem>
-#include <fstream>
 #include <optional>
 #include <sstream>
-#include <stdlib.h>
 #include <string>
 #include <string.h>
 #include <vector>
 
 #include "exception.h"
+#include "utils.h"
 
 template <typename T> struct Option
 {
-    Option(T value)
-    {
-        this->value = (T*)malloc(sizeof(T));
-
-        *this->value = value;
-    }
+    Option(T value) :
+        value(value), exists(true) {}
 
     Option() {}
 
-    ~Option()
-    {
-        delete value;
-    }
-
     T get(T defaultValue)
     {
-        if (value)
+        if (exists)
         {
-            return *value;
+            return value;
         }
 
         return defaultValue;
@@ -39,16 +29,18 @@ template <typename T> struct Option
 
     T require(const std::string& message)
     {
-        if (value)
+        if (exists)
         {
-            return *value;
+            return value;
         }
 
         throw RadialConfigException(message);
     }
 
 private:
-    T* value = nullptr;
+    T value;
+
+    const bool exists = false;
 
 };
 
