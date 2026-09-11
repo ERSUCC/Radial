@@ -84,6 +84,11 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
         cmd += " /libpath:\"" + path.string() + "\"";
     }
 
+    for (const std::string& lib : env.libs)
+    {
+        cmd += " " + lib;
+    }
+
     for (const std::filesystem::path& object : env.objects)
     {
         cmd += " \"" + object.string() + "\"";
@@ -120,6 +125,11 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
     for (const std::filesystem::path& path : env.libDirs)
     {
         cmd += " -L \"" + path.string() + "\"";
+    }
+
+    for (const std::string& lib : env.libs)
+    {
+        cmd += " -l" + lib;
     }
 
     for (const std::filesystem::path& object : env.objects)

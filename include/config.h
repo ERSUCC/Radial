@@ -43,6 +43,8 @@ struct BuildEnvironment
     PathSet sources;
     PathSet objects;
 
+    std::unordered_set<std::string> libs;
+
     std::unordered_map<std::string, std::string> defines;
 
 private:
