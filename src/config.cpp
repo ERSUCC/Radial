@@ -49,7 +49,7 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
 
     findCompiler(env);
 
-    for (const TOMLValue* include : env.config->get("include_dirs")->array().get(std::vector<const TOMLValue*>()))
+    for (const TOMLValue* include : env.config->get("include_dirs")->array().get({}))
     {
         const std::string value = include->string().require("`include_dirs` must be an array of strings.");
 
@@ -75,6 +75,13 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
                 }
             }
         }
+    }
+
+    for (const TOMLEntry* define : env.config->get("defines")->table().get({}))
+    {
+        const std::string value = define->value->string().require("Defines must be strings.");
+
+        env.defines[define->key] = value;
     }
 
     return env;

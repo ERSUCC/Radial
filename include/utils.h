@@ -19,6 +19,7 @@ struct Utils
 
     static std::string readFile(const std::filesystem::path& path);
     static std::string trim(const std::string& str);
+    static std::string escapeQuotes(const std::string& str);
 
 private:
     static void printPrefixed(const std::string& message, const std::string& prefix);

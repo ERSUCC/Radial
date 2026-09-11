@@ -65,6 +65,11 @@ TOMLValue* TOMLValue::getDefault()
 
 TOMLValue::~TOMLValue() {}
 
+Option<std::vector<const TOMLEntry*>> TOMLValue::table() const
+{
+    return {};
+}
+
 Option<std::vector<const TOMLValue*>> TOMLValue::array() const
 {
     return {};
@@ -83,6 +88,60 @@ Option<int> TOMLValue::integer() const
 Option<bool> TOMLValue::boolean() const
 {
     return {};
+}
+
+TOMLTable* TOMLTable::parse(std::istringstream& stream)
+{
+    TOMLTable* table = new TOMLTable();
+
+    while (!stream.eof())
+    {
+        while (stream.peek() == '\n')
+        {
+            stream.ignore();
+        }
+
+        if (stream.eof() || stream.peek() == '[')
+        {
+            break;
+        }
+
+        try
+        {
+            table->entries.push_back(TOMLEntry::parse(stream));
+        }
+
+        catch (const RadialException& ex)
+        {
+            delete table;
+
+            throw;
+        }
+
+        TOMLUtils::skipWhitespace(stream);
+
+        if (stream.peek() != '\n')
+        {
+            delete table;
+
+            throw RadialConfigException("Expected newline, but received \"" + std::string(1, stream.peek()) + "\".");
+        }
+    }
+
+    return table;
+}
+
+TOMLTable::~TOMLTable()
+{
+    for (const TOMLEntry* entry : entries)
+    {
+        delete entry;
+    }
+}
+
+Option<std::vector<const TOMLEntry*>> TOMLTable::table() const
+{
+    return entries;
 }
 
 TOMLArray* TOMLArray::parse(std::istringstream& stream)
@@ -276,6 +335,28 @@ TOMLBoolean::TOMLBoolean(const bool value) :
 
 TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
 {
+    TOMLUtils::skipWhitespace(stream);
+
+    if (stream.peek() == '[')
+    {
+        stream.ignore();
+
+        TOMLUtils::skipWhitespace(stream);
+
+        const std::string key = TOMLEntry::parseKey(stream);
+
+        TOMLUtils::skipWhitespace(stream);
+
+        if (stream.peek() != ']')
+        {
+            throw RadialConfigException("Expected \"]\", but received \"" + std::string(1, stream.peek()) + "\".");
+        }
+
+        stream.ignore();
+
+        return new TOMLEntry(key, TOMLTable::parse(stream));
+    }
+
     const std::string key = TOMLEntry::parseKey(stream);
 
     TOMLUtils::skipWhitespace(stream);
@@ -300,8 +381,6 @@ TOMLEntry::TOMLEntry(const std::string& key, const TOMLValue* value) :
 
 std::string TOMLEntry::parseKey(std::istringstream& stream)
 {
-    TOMLUtils::skipWhitespace(stream);
-
     if (!keyChar(stream.peek()))
     {
         throw RadialConfigException("Invalid key character \"" + std::string(1, stream.peek()) + "\".");
@@ -352,7 +431,7 @@ TOML* TOML::parse(std::istringstream& stream)
 
         TOMLUtils::skipWhitespace(stream);
 
-        if (stream.peek() != '\n')
+        if (!stream.eof() && stream.peek() != '\n')
         {
             delete toml;
 

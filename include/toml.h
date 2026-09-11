@@ -49,6 +49,8 @@ struct TOMLUtils
     static void skipWhitespace(std::istringstream& stream, const bool multiline = false);
 };
 
+struct TOMLEntry;
+
 struct TOMLValue
 {
     static TOMLValue* parse(std::istringstream& stream);
@@ -56,16 +58,27 @@ struct TOMLValue
 
     virtual ~TOMLValue();
 
+    virtual Option<std::vector<const TOMLEntry*>> table() const;
     virtual Option<std::vector<const TOMLValue*>> array() const;
-
     virtual Option<std::string> string() const;
-
     virtual Option<int> integer() const;
-
     virtual Option<bool> boolean() const;
 
 private:
     static TOMLValue* defaultValue;
+
+};
+
+struct TOMLTable : public TOMLValue
+{
+    static TOMLTable* parse(std::istringstream& stream);
+
+    ~TOMLTable();
+
+    Option<std::vector<const TOMLEntry*>> table() const override;
+
+private:
+    std::vector<const TOMLEntry*> entries;
 
 };
 

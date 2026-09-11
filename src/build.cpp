@@ -65,6 +65,11 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
         cmd += " /I\"" + path.string() + "\"";
     }
 
+    for (const std::pair<std::string, std::string>& define : env.defines)
+    {
+        cmd += " /D" + define.first + "=" + Utils::escapeQuotes(define.second);
+    }
+
     cmd += " /Fo\"" + object.string() + "\" \"" + file.string() + "\"";
 
     return cmd;
@@ -96,6 +101,11 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
     for (const std::filesystem::path& path : env.includeDirs)
     {
         cmd += " -I \"" + path.string() + "\"";
+    }
+
+    for (const std::pair<std::string, std::string>& define : env.defines)
+    {
+        cmd += " -D" + define.first + "=" + Utils::escapeQuotes(define.second);
     }
 
     cmd += " -o \"" + object.string() + "\" \"" + file.string() + "\"";

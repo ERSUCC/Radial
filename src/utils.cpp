@@ -100,6 +100,26 @@ std::string Utils::trim(const std::string& str)
     return trimmed;
 }
 
+std::string Utils::escapeQuotes(const std::string& str)
+{
+    std::string escaped;
+
+    for (const char c : str)
+    {
+        if (c == '"')
+        {
+            escaped += "\\\"";
+        }
+
+        else
+        {
+            escaped += c;
+        }
+    }
+
+    return escaped;
+}
+
 void Utils::printPrefixed(const std::string& message, const std::string& prefix)
 {
     char* data = (char*)malloc(sizeof(char) * (message.size() + 1));
