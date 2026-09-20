@@ -167,16 +167,25 @@ std::string Utils::escapeQuotes(const std::string& str)
 
 void Utils::printPrefixed(const std::string& message, const std::string& prefix)
 {
-    char* data = (char*)malloc(sizeof(char) * (message.size() + 1));
+    std::string line;
 
-    strncpy(data, message.c_str(), message.size() + 1);
-
-    std::cout << prefix << strtok(data, "\n") << "\n";
-
-    while (const char* token = strtok(nullptr, "\n"))
+    for (size_t i = 0; i < message.size(); i++)
     {
-        std::cout << prefix << token << "\n";
+        if (message[i] == '\n')
+        {
+            std::cout << prefix << line << "\n";
+
+            line = "";
+        }
+
+        else
+        {
+            line += message[i];
+        }
     }
 
-    free(data);
+    if (!line.empty())
+    {
+        std::cout << prefix << line << "\n";
+    }
 }
