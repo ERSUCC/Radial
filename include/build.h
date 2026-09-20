@@ -22,6 +22,8 @@
 
 #endif
 
+typedef std::filesystem::file_time_type FileTime;
+
 struct Build
 {
     static void run(const BuildOptions* options);
@@ -34,15 +36,9 @@ private:
     static std::string compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
     static std::string linkCommand(const BuildEnvironment& env, const std::filesystem::path& file);
 
-};
+    static bool cacheValid(const BuildEnvironment& env, const std::filesystem::path& file);
+    static bool includeCacheValid(const BuildEnvironment& env, const std::filesystem::path& file);
 
-struct Cache
-{
-    static std::filesystem::file_time_type readTime(const BuildEnvironment& env, const std::filesystem::path& file);
-
-    static void writeTime(const BuildEnvironment& env, const std::filesystem::path& file);
-
-private:
-    static std::filesystem::path cachePath(const BuildEnvironment& env, const std::filesystem::path& file);
+    static void updateCache(const BuildEnvironment& env, const std::filesystem::path& file);
 
 };

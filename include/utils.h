@@ -17,7 +17,9 @@ struct Utils
 
     static size_t numericVersion(const std::string& version);
 
-    static std::string readFile(const std::filesystem::path& path);
+    static std::string readString(const std::filesystem::path& path);
+    static std::vector<std::string> readLines(const std::filesystem::path& path);
+
     static std::string trim(const std::string& str);
     static std::string escapeQuotes(const std::string& str);
 

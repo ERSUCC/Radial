@@ -444,7 +444,7 @@ TOML* TOML::parse(std::istringstream& stream)
 
 TOML* TOML::parse(const std::filesystem::path& path)
 {
-    std::istringstream stream(Utils::readFile(path));
+    std::istringstream stream(Utils::readString(path));
 
     return TOML::parse(stream);
 }

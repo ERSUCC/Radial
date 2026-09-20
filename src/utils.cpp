@@ -30,7 +30,7 @@ size_t Utils::numericVersion(const std::string& version)
     return major * 65536 + minor * 256 + patch;
 }
 
-std::string Utils::readFile(const std::filesystem::path& path)
+std::string Utils::readString(const std::filesystem::path& path)
 {
     std::ifstream file(path);
 
@@ -60,6 +60,51 @@ std::string Utils::readFile(const std::filesystem::path& path)
     file.close();
 
     return data;
+}
+
+std::vector<std::string> Utils::readLines(const std::filesystem::path& path)
+{
+    std::ifstream file(path);
+
+    if (!file.is_open())
+    {
+        throw RadialFileException("Failed to read file: \"" + path.string() + "\"");
+    }
+
+    std::vector<std::string> lines;
+
+    std::string line;
+
+    while (!file.eof())
+    {
+        char buffer[1025];
+
+        file.read(buffer, 1024);
+
+        if (file.bad())
+        {
+            throw RadialFileException("Failed to read file: \"" + path.string() + "\"");
+        }
+
+        for (size_t i = 0; i < file.gcount(); i++)
+        {
+            if (buffer[i] == '\n')
+            {
+                lines.push_back(line);
+
+                line = "";
+            }
+
+            else
+            {
+                line += buffer[i];
+            }
+        }
+    }
+
+    file.close();
+
+    return lines;
 }
 
 std::string Utils::trim(const std::string& str)

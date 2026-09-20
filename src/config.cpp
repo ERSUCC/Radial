@@ -63,7 +63,7 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
     {
         const std::string value = dir->string().require("`source_dirs` must be an array of strings.");
 
-        if (!value.empty())
+        if (!value.empty() && std::filesystem::is_directory(root / value))
         {
             for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(root / value))
             {
@@ -72,6 +72,12 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
                 if (entry.is_regular_file())
                 {
                     env.sources.insert(entry.path());
+
+                    PathSet includes;
+
+                    findIncludes(env, entry.path(), includes);
+
+                    env.includes[entry.path()] = includes;
                 }
             }
         }
@@ -168,10 +174,10 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
         }
     }
 
-    env.compilerPath = Utils::trim(Utils::readFile(compilerPath));
-    env.linkerPath = Utils::trim(Utils::readFile(linkerPath));
+    env.compilerPath = Utils::trim(Utils::readString(compilerPath));
+    env.linkerPath = Utils::trim(Utils::readString(linkerPath));
 
-    const std::string includes = Utils::readFile(includePaths);
+    const std::string includes = Utils::readString(includePaths);
 
     char* data = (char*)malloc(sizeof(char) * (includes.size() + 1));
 
@@ -186,7 +192,7 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 
     free(data);
 
-    const std::string libs = Utils::readFile(libPaths);
+    const std::string libs = Utils::readString(libPaths);
 
     data = (char*)malloc(sizeof(char) * (libs.size() + 1));
 
@@ -211,3 +217,65 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 }
 
 #endif
+
+void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes)
+{
+    const std::vector<std::string> lines = Utils::readLines(path);
+
+    for (const std::string& line : lines)
+    {
+        const size_t match = line.find("#include");
+
+        if (match == std::string::npos)
+        {
+            continue;
+        }
+
+        const size_t start = line.find('\"', match + 9);
+
+        if (start == std::string::npos)
+        {
+            continue;
+        }
+
+        const size_t end = line.find('\"', start + 1);
+
+        if (end == std::string::npos)
+        {
+            continue;
+        }
+
+        const std::string name = line.substr(start + 1, end - start - 1);
+
+        const std::filesystem::path localPath = path.parent_path() / name;
+
+        if (std::filesystem::is_regular_file(localPath))
+        {
+            if (!includes.count(localPath))
+            {
+                includes.insert(localPath);
+
+                findIncludes(env, localPath, includes);
+            }
+
+            continue;
+        }
+
+        for (const std::filesystem::path& dir : env.includeDirs)
+        {
+            const std::filesystem::path includePath = std::filesystem::weakly_canonical(dir / name);
+
+            if (std::filesystem::is_regular_file(includePath))
+            {
+                if (!includes.count(includePath))
+                {
+                    includes.insert(includePath);
+
+                    findIncludes(env, includePath, includes);
+                }
+
+                break;
+            }
+        }
+    }
+}

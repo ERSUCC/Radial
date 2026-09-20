@@ -29,12 +29,12 @@ void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
 
     env.objects.insert(object);
 
-    if (std::filesystem::exists(object) && std::filesystem::last_write_time(file) <= Cache::readTime(env, file))
+    if (std::filesystem::exists(object) && cacheValid(env, file) && includeCacheValid(env, file))
     {
         return;
     }
 
-    Cache::writeTime(env, file);
+    updateCache(env, file);
 
     Utils::info("Compiling " + name);
 
@@ -142,23 +142,45 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
 
 #endif
 
-std::filesystem::file_time_type Cache::readTime(const BuildEnvironment& env, const std::filesystem::path& file)
+bool Build::cacheValid(const BuildEnvironment& env, const std::filesystem::path& file)
 {
-    const std::filesystem::path path = cachePath(env, file);
+    const std::filesystem::path path = env.cache / (file.filename().string() + ".txt");
 
     if (!std::filesystem::is_regular_file(path))
     {
-        return {};
+        return false;
     }
 
-    const std::string data = Utils::readFile(path);
+    const std::string data = Utils::readString(path);
 
-    return std::filesystem::file_time_type(std::filesystem::file_time_type::duration(atoll(data.c_str())));
+    return std::filesystem::last_write_time(file) <= FileTime(FileTime::duration(atoll(data.c_str())));
 }
 
-void Cache::writeTime(const BuildEnvironment& env, const std::filesystem::path& file)
+bool Build::includeCacheValid(const BuildEnvironment& env, const std::filesystem::path& file)
 {
-    const std::filesystem::path path = cachePath(env, file);
+    for (const std::filesystem::path& include : env.includes.at(file))
+    {
+        const std::filesystem::path path = env.cache / (file.filename().string() + ".txt");
+
+        if (!std::filesystem::is_regular_file(path))
+        {
+            return false;
+        }
+
+        const std::string data = Utils::readString(path);
+
+        if (FileTime(FileTime::duration(atoll(data.c_str()))) < std::filesystem::last_write_time(include))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void Build::updateCache(const BuildEnvironment& env, const std::filesystem::path& file)
+{
+    const std::filesystem::path path = env.cache / (file.filename().string() + ".txt");
 
     std::filesystem::create_directories(path.parent_path());
 
@@ -166,13 +188,8 @@ void Cache::writeTime(const BuildEnvironment& env, const std::filesystem::path& 
 
     if (cache.is_open())
     {
-        cache << (size_t)std::filesystem::file_time_type::clock::now().time_since_epoch().count() << "\n";
+        cache << (size_t)FileTime::clock::now().time_since_epoch().count() << "\n";
     }
 
     cache.close();
-}
-
-std::filesystem::path Cache::cachePath(const BuildEnvironment& env, const std::filesystem::path& file)
-{
-    return env.cache / (file.filename().string() + ".txt");
 }

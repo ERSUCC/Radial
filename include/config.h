@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string>
 #include <string.h>
@@ -43,6 +44,8 @@ struct BuildEnvironment
     PathSet sources;
     PathSet objects;
 
+    std::unordered_map<std::filesystem::path, PathSet> includes;
+
     std::unordered_set<std::string> libs;
 
     std::unordered_map<std::string, std::string> defines;
@@ -51,5 +54,6 @@ private:
     BuildEnvironment(std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest);
 
     static void findCompiler(BuildEnvironment& env);
+    static void findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes);
 
 };
