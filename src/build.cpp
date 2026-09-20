@@ -18,7 +18,7 @@ void Build::build(BuildEnvironment& env)
         compile(env, source);
     }
 
-    link(env, env.dest / env.name);
+    link(env, env.dest / (env.name + BIN_EXT));
 }
 
 void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)

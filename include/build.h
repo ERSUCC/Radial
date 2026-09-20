@@ -14,10 +14,12 @@
 #ifdef _WIN32
 
 #define OBJ_EXT ".obj"
+#define BIN_EXT ".exe"
 
 #else
 
 #define OBJ_EXT ".o"
+#define BIN_EXT ""
 
 #endif
 
