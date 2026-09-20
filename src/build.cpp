@@ -56,7 +56,7 @@ void Build::link(BuildEnvironment& env, const std::filesystem::path& file)
 
 std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
-    std::string cmd = "\"" + env.compilerPath + "\" /std:c++" + std::to_string(env.stdVersion) + " /c";
+    std::string cmd = "\"" + env.compilerPath + "\" /nologo /std:c++" + std::to_string(env.stdVersion) + " /c";
 
     for (const std::filesystem::path& path : env.includeDirs)
     {

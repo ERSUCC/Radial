@@ -12,6 +12,7 @@ int Process::run(std::string cmd, const bool display)
     startupInfo.dwFlags = STARTF_USESTDHANDLES;
 
     HANDLE outHandle;
+    HANDLE errHandle;
 
     SECURITY_ATTRIBUTES attr = { 0 };
 
@@ -23,11 +24,17 @@ int Process::run(std::string cmd, const bool display)
         throw RadialException("Failed to create subprocess.");
     }
 
+    if (!CreatePipe(&errHandle, &startupInfo.hStdError, &attr, 0))
+    {
+        throw RadialException("Failed to create subprocess.");
+    }
+
     PROCESS_INFORMATION procInfo;
 
     if (!CreateProcess(nullptr, cmd.data(), nullptr, nullptr, true, 0, nullptr, nullptr, &startupInfo, &procInfo))
     {
         CloseHandle(outHandle);
+        CloseHandle(errHandle);
         CloseHandle(startupInfo.hStdOutput);
         CloseHandle(procInfo.hProcess);
         CloseHandle(procInfo.hThread);
@@ -44,7 +51,7 @@ int Process::run(std::string cmd, const bool display)
         throw RadialException("Failed to get subprocess exit code.");
     }
 
-    if (!CloseHandle(startupInfo.hStdOutput) || !CloseHandle(procInfo.hProcess) || !CloseHandle(procInfo.hThread))
+    if (!CloseHandle(startupInfo.hStdOutput) || !CloseHandle(startupInfo.hStdError) || !CloseHandle(procInfo.hProcess) || !CloseHandle(procInfo.hThread))
     {
         throw RadialException("Failed to close subprocess.");
     }
@@ -65,10 +72,19 @@ int Process::run(std::string cmd, const bool display)
             buffer[read] = '\0';
 
             Utils::info(buffer);
+
+            if (!ReadFile(errHandle, buffer, 1024, &read, nullptr) || read == 0)
+            {
+                break;
+            }
+
+            buffer[read] = '\0';
+
+            Utils::error(buffer);
         }
     }
 
-    if (!CloseHandle(outHandle))
+    if (!CloseHandle(outHandle) || !CloseHandle(errHandle))
     {
         throw RadialException("Failed to close subprocess.");
     }
@@ -78,30 +94,120 @@ int Process::run(std::string cmd, const bool display)
 
 #else
 
-#include <stdio.h>
+#include <poll.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 int Process::run(std::string cmd, const bool display)
 {
-    FILE* proc = popen((cmd + " 2>&1").c_str(), "r");
+    int out[2];
+    int err[2];
 
-    if (!proc)
+    if (pipe(out) || pipe(err))
+    {
+        throw RadialException("Failed to create subprocess.");
+    }
+
+    const pid_t id = fork();
+
+    if (id == -1)
+    {
+        close(out[0]);
+        close(out[1]);
+        close(err[0]);
+        close(err[1]);
+
+        throw RadialException("Failed to create subprocess.");
+    }
+
+    if (!id)
+    {
+        if (!dup2(out[1], STDOUT_FILENO) || !dup2(err[1], STDERR_FILENO))
+        {
+            return errno;
+        }
+
+        if (close(out[0]) || close(err[0]))
+        {
+            return errno;
+        }
+
+        return execlp("sh", "sh", "-c", cmd.c_str(), NULL);
+    }
+
+    if (close(out[1]) || close(err[1]))
     {
         throw RadialException("Failed to create subprocess.");
     }
 
     if (display)
     {
+        pollfd fds[2];
+
+        fds[0].fd = out[0];
+        fds[1].fd = err[0];
+
+        fds[0].events = POLLIN;
+        fds[1].events = POLLIN;
+
         char buffer[1025];
 
-        while (const size_t read = fread(buffer, sizeof(char), 1024, proc))
+        while (const int ready = poll(fds, 2, -1))
         {
-            buffer[read] = '\0';
+            if (ready == -1)
+            {
+                throw RadialException("Failed to read from subprocess.");
+            }
 
-            Utils::info(buffer);
+            if ((fds[0].revents & POLLHUP) == POLLHUP || (fds[1].revents & POLLHUP) == POLLHUP)
+            {
+                break;
+            }
+
+            if ((fds[0].revents & POLLIN) == POLLIN)
+            {
+                const ssize_t length = read(out[0], buffer, sizeof(char) * 1024);
+
+                if (length == -1)
+                {
+                    throw RadialException("Failed to read from subprocess.");
+                }
+
+                buffer[length] = '\0';
+
+                Utils::info(buffer);
+            }
+
+            if ((fds[1].revents & POLLIN) == POLLIN)
+            {
+                const ssize_t length = read(err[0], buffer, sizeof(char) * 1024);
+
+                if (length == -1)
+                {
+                    throw RadialException("Failed to read from subprocess.");
+                }
+
+                buffer[length] = '\0';
+
+                Utils::error(buffer);
+            }
         }
     }
 
-    return pclose(proc);
+    if (close(out[0]) || close(err[0]))
+    {
+        throw RadialException("Failed to close subprocess.");
+    }
+
+    int code;
+
+    if (wait(&code) == -1)
+    {
+        throw RadialException("Failed to close subprocess.");
+    }
+
+    return code;
 }
 
 #endif
