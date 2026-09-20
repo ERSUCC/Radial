@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <string>
 #include <string.h>
+#include <vector>
 
 #include "exception.h"
 
