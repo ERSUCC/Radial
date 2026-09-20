@@ -26,14 +26,14 @@
 struct Build
 {
     static void run(const BuildOptions* options);
-    static void build(BuildEnvironment& env, const bool force);
+    static void build(const BuildOptions* options, BuildEnvironment& env);
 
 private:
-    static void compile(BuildEnvironment& env, const std::filesystem::path& file, const bool force);
-    static void link(BuildEnvironment& env, const std::filesystem::path& file);
+    static void compile(const BuildOptions* options, BuildEnvironment& env, const std::filesystem::path& file);
+    static void link(const BuildOptions* options, BuildEnvironment& env, const std::filesystem::path& file);
 
-    static std::string compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
-    static std::string linkCommand(const BuildEnvironment& env, const std::filesystem::path& file);
+    static std::string compileCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
+    static std::string linkCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file);
 
     static bool shouldUpdate(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
 

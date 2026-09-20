@@ -23,20 +23,17 @@ struct CommandOptions
 
 struct BuildOptions : public CommandOptions
 {
-    BuildOptions();
+    BuildOptions(const CommandType& type = CommandType::Build);
 
     bool force = false;
+    bool debug = false;
 
     std::optional<std::string> root;
 };
 
-struct RunOptions : public CommandOptions
+struct RunOptions : public BuildOptions
 {
     RunOptions();
-
-    bool force = false;
-
-    std::optional<std::string> root;
 };
 
 struct ProgramOptions

@@ -6,7 +6,7 @@ void Run::run(const RunOptions* options)
 
     BuildEnvironment env = BuildEnvironment::create(root);
 
-    Build::build(env, options->force);
+    Build::build(options, env);
 
     Utils::info("Running " + env.name);
 

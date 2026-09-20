@@ -6,22 +6,22 @@ void Build::run(const BuildOptions* options)
 
     BuildEnvironment env = BuildEnvironment::create(root);
 
-    build(env, options->force);
+    build(options, env);
 }
 
-void Build::build(BuildEnvironment& env, const bool force)
+void Build::build(const BuildOptions* options, BuildEnvironment& env)
 {
     Utils::info("Building project " + env.name);
 
     for (const std::filesystem::path& source : env.sources)
     {
-        compile(env, source, force);
+        compile(options, env, source);
     }
 
-    link(env, env.dest / (env.name + BIN_EXT));
+    link(options, env, env.dest / (env.name + BIN_EXT));
 }
 
-void Build::compile(BuildEnvironment& env, const std::filesystem::path& file, const bool force)
+void Build::compile(const BuildOptions* options, BuildEnvironment& env, const std::filesystem::path& file)
 {
     const std::string name = file.filename().string();
 
@@ -29,24 +29,24 @@ void Build::compile(BuildEnvironment& env, const std::filesystem::path& file, co
 
     env.objects.insert(object);
 
-    if (!force && std::filesystem::exists(object) && !shouldUpdate(env, file, object))
+    if (!options->force && std::filesystem::exists(object) && !shouldUpdate(env, file, object))
     {
         return;
     }
 
     Utils::info("Compiling " + name);
 
-    if (const int code = Process::run(compileCommand(env, file, object)))
+    if (const int code = Process::run(compileCommand(options, env, file, object)))
     {
         throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }
 }
 
-void Build::link(BuildEnvironment& env, const std::filesystem::path& file)
+void Build::link(const BuildOptions* options, BuildEnvironment& env, const std::filesystem::path& file)
 {
     Utils::info("Linking " + file.filename().string());
 
-    if (const int code = Process::run(linkCommand(env, file)))
+    if (const int code = Process::run(linkCommand(options, env, file)))
     {
         throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }
@@ -54,9 +54,14 @@ void Build::link(BuildEnvironment& env, const std::filesystem::path& file)
 
 #ifdef _WIN32
 
-std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+std::string Build::compileCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
     std::string cmd = "\"" + env.compilerPath + "\" /nologo /std:c++" + std::to_string(env.stdVersion) + " /EHsc /c";
+
+    if (options->debug)
+    {
+        cmd += " /MTd";
+    }
 
     for (const std::filesystem::path& path : env.includeDirs)
     {
@@ -73,9 +78,14 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
     return cmd;
 }
 
-std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
+std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file)
 {
     std::string cmd = "\"" + env.linkerPath + "\" /nologo /out:\"" + file.string() + "\"";
+
+    if (options->debug)
+    {
+        cmd += " /debug:full";
+    }
 
     for (const std::filesystem::path& path : env.libDirs)
     {
@@ -97,9 +107,14 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
 
 #else
 
-std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+std::string Build::compileCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
     std::string cmd = "\"" + env.compilerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -c";
+
+    if (options->debug)
+    {
+        cmd += " -g";
+    }
 
     for (const std::filesystem::path& path : env.includeDirs)
     {
@@ -116,7 +131,7 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
     return cmd;
 }
 
-std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
+std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file)
 {
     std::string cmd = "\"" + env.linkerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -o \"" + file.string() + "\"";
 

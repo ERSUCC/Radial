@@ -5,11 +5,11 @@ CommandOptions::CommandOptions(const CommandType& command) :
 
 CommandOptions::~CommandOptions() {}
 
-BuildOptions::BuildOptions() :
-    CommandOptions(CommandType::Build) {}
+BuildOptions::BuildOptions(const CommandType& type) :
+    CommandOptions(type) {}
 
 RunOptions::RunOptions() :
-    CommandOptions(CommandType::Run) {}
+    BuildOptions(CommandType::Run) {}
 
 ProgramOptions ProgramOptions::parse(char** argv, const int argc)
 {
@@ -91,6 +91,11 @@ BuildOptions* ProgramOptions::parseBuild(char** argv, const int argc)
                 options->force = true;
             }
 
+            else if (flag == "debug")
+            {
+                options->debug = true;
+            }
+
             else
             {
                 throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"build\". Use `radial build --help` for information about command options.");
@@ -136,6 +141,11 @@ RunOptions* ProgramOptions::parseRun(char** argv, const int argc)
             if (flag == "force")
             {
                 options->force = true;
+            }
+
+            else if (flag == "debug")
+            {
+                options->debug = true;
             }
 
             else
