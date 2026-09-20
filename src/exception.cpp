@@ -26,18 +26,20 @@ std::string RadialUsageException::getUsageMessage(const std::string& command)
 
     else if (command == "build")
     {
-        message += "Usage: radial build [--help] [<path>]\n\n";
+        message += "Usage: radial build [--help] [--force] [<path>]\n\n";
         message += "Build the project in the specified directory. If no path is specified, build the\n";
-        message += "project in the current directory.\n\n";
+        message += "project in the current directory. If the `--force` flag is specified, all\n";
+        message += "artifacts will be rebuilt, whether or not they are outdated.\n\n";
         message += "Use `radial --help` for information about other commands.";
     }
 
     else if (command == "run")
     {
-        message += "Usage: radial run [--help] [<path>]\n\n";
+        message += "Usage: radial run [--help] [--force] [<path>]\n\n";
         message += "Run the project in the specified directory. If no path is specified, run the\n";
         message += "project in the current directory. Any outdated artifacts will be automatically\n";
-        message += "compiled before running the project.\n\n";
+        message += "compiled before running the project. If the `--force` flag is specified, all\n";
+        message += "artifacts will be rebuilt before running, whether or not they are outdated.\n\n";
         message += "Use `radial --help` for information about other commands.";
     }
 

@@ -6,22 +6,22 @@ void Build::run(const BuildOptions* options)
 
     BuildEnvironment env = BuildEnvironment::create(root);
 
-    build(env);
+    build(env, options->force);
 }
 
-void Build::build(BuildEnvironment& env)
+void Build::build(BuildEnvironment& env, const bool force)
 {
     Utils::info("Building project " + env.name);
 
     for (const std::filesystem::path& source : env.sources)
     {
-        compile(env, source);
+        compile(env, source, force);
     }
 
     link(env, env.dest / (env.name + BIN_EXT));
 }
 
-void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
+void Build::compile(BuildEnvironment& env, const std::filesystem::path& file, const bool force)
 {
     const std::string name = file.filename().string();
 
@@ -29,7 +29,7 @@ void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
 
     env.objects.insert(object);
 
-    if (std::filesystem::exists(object) && !shouldUpdate(env, file, object))
+    if (!force && std::filesystem::exists(object) && !shouldUpdate(env, file, object))
     {
         return;
     }

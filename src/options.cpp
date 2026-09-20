@@ -86,7 +86,17 @@ BuildOptions* ProgramOptions::parseBuild(char** argv, const int argc)
                 throw RadialUsageException("build");
             }
 
-            throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"build\". Use `radial build --help` for information about command options.");
+            if (flag == "force")
+            {
+                options->force = true;
+            }
+
+            else
+            {
+                throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"build\". Use `radial build --help` for information about command options.");
+            }
+
+            current++;
         }
 
         else
@@ -123,7 +133,17 @@ RunOptions* ProgramOptions::parseRun(char** argv, const int argc)
                 throw RadialUsageException("run");
             }
 
-            throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"run\". Use `radial run --help` for information about command options.");
+            if (flag == "force")
+            {
+                options->force = true;
+            }
+
+            else
+            {
+                throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"run\". Use `radial run --help` for information about command options.");
+            }
+
+            current++;
         }
 
         else

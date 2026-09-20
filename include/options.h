@@ -25,12 +25,16 @@ struct BuildOptions : public CommandOptions
 {
     BuildOptions();
 
+    bool force = false;
+
     std::optional<std::string> root;
 };
 
 struct RunOptions : public CommandOptions
 {
     RunOptions();
+
+    bool force = false;
 
     std::optional<std::string> root;
 };

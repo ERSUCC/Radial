@@ -26,10 +26,10 @@
 struct Build
 {
     static void run(const BuildOptions* options);
-    static void build(BuildEnvironment& env);
+    static void build(BuildEnvironment& env, const bool force);
 
 private:
-    static void compile(BuildEnvironment& env, const std::filesystem::path& file);
+    static void compile(BuildEnvironment& env, const std::filesystem::path& file, const bool force);
     static void link(BuildEnvironment& env, const std::filesystem::path& file);
 
     static std::string compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
