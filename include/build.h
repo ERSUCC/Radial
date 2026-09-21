@@ -9,6 +9,7 @@
 #include "exception.h"
 #include "options.h"
 #include "process.h"
+#include "toml.h"
 #include "utils.h"
 
 #ifdef _WIN32
@@ -35,6 +36,8 @@ private:
     static std::string compileCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
     static std::string linkCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file);
 
-    static bool shouldUpdate(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
+    static bool shouldUpdate(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
+
+    static void updateCache(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file);
 
 };

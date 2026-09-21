@@ -24,6 +24,8 @@ struct Utils
     static std::string trim(const std::string& str);
     static std::string escapeQuotes(const std::string& str);
 
+    static void writeString(const std::filesystem::path& path, const std::string& data);
+
 private:
     static void printPrefixed(const std::string& message, const std::string& prefix);
 

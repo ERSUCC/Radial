@@ -65,7 +65,7 @@ TOMLValue* TOMLValue::getDefault()
 
 TOMLValue::~TOMLValue() {}
 
-Option<std::vector<const TOMLEntry*>> TOMLValue::table() const
+Option<std::unordered_map<std::string, const TOMLValue*>> TOMLValue::table() const
 {
     return {};
 }
@@ -90,9 +90,11 @@ Option<bool> TOMLValue::boolean() const
     return {};
 }
 
+void TOMLValue::write(std::ostringstream& stream) const {}
+
 TOMLTable* TOMLTable::parse(std::istringstream& stream)
 {
-    TOMLTable* table = new TOMLTable();
+    TOMLTable* table = new TOMLTable({});
 
     while (!stream.eof())
     {
@@ -108,7 +110,9 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
 
         try
         {
-            table->entries.push_back(TOMLEntry::parse(stream));
+            const TOMLEntry* entry = TOMLEntry::parse(stream);
+
+            table->entries[entry->key] = entry;
         }
 
         catch (const RadialException& ex)
@@ -131,22 +135,40 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
     return table;
 }
 
+TOMLTable::TOMLTable(const std::unordered_map<std::string, const TOMLEntry*>& entries) :
+    entries(entries) {}
+
 TOMLTable::~TOMLTable()
 {
-    for (const TOMLEntry* entry : entries)
+    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
     {
-        delete entry;
+        delete entry.second;
     }
 }
 
-Option<std::vector<const TOMLEntry*>> TOMLTable::table() const
+Option<std::unordered_map<std::string, const TOMLValue*>> TOMLTable::table() const
 {
-    return entries;
+    std::unordered_map<std::string, const TOMLValue*> values;
+
+    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    {
+        values[entry.first] = entry.second->value;
+    }
+
+    return values;
+}
+
+void TOMLTable::write(std::ostringstream& stream) const
+{
+    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    {
+        entry.second->write(stream);
+    }
 }
 
 TOMLArray* TOMLArray::parse(std::istringstream& stream)
 {
-    TOMLArray* array = new TOMLArray();
+    TOMLArray* array = new TOMLArray({});
 
     while (stream.peek() != ']')
     {
@@ -184,6 +206,9 @@ TOMLArray* TOMLArray::parse(std::istringstream& stream)
     return array;
 }
 
+TOMLArray::TOMLArray(const std::vector<const TOMLValue*>& values) :
+    values(values) {}
+
 TOMLArray::~TOMLArray()
 {
     for (const TOMLValue* value : values)
@@ -195,6 +220,29 @@ TOMLArray::~TOMLArray()
 Option<std::vector<const TOMLValue*>> TOMLArray::array() const
 {
     return values;
+}
+
+void TOMLArray::write(std::ostringstream& stream) const
+{
+    if (values.empty())
+    {
+        stream << "[]";
+
+        return;
+    }
+
+    stream << "[\n  ";
+
+    values[0]->write(stream);
+
+    for (size_t i = 1; i < values.size(); i++)
+    {
+        stream << ",\n  ";
+
+        values[i]->write(stream);
+    }
+
+    stream << "]";
 }
 
 TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
@@ -275,16 +323,77 @@ TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
 
     stream.ignore();
 
-    return new TOMLString(value);
+    return new TOMLString(value, literal);
 }
+
+TOMLString::TOMLString(const std::string& value, const bool literal) :
+    value(value), literal(literal) {}
 
 Option<std::string> TOMLString::string() const
 {
     return value;
 }
 
-TOMLString::TOMLString(const std::string& value) :
-    value(value) {}
+void TOMLString::write(std::ostringstream& stream) const
+{
+    if (literal)
+    {
+        stream << "'" << value << "'";
+    }
+
+    else
+    {
+        stream << '"';
+
+        for (const char c : value)
+        {
+            switch (c)
+            {
+                case '\b':
+                    stream << "\\b";
+
+                    break;
+
+                case '\t':
+                    stream << "\\t";
+
+                    break;
+
+                case '\n':
+                    stream << "\\n";
+
+                    break;
+
+                case '\f':
+                    stream << "\\f";
+
+                    break;
+
+                case '\r':
+                    stream << "\\r";
+
+                    break;
+
+                case '\"':
+                    stream << "\\\"";
+
+                    break;
+
+                case '\\':
+                    stream << "\\\\";
+
+                    break;
+
+                default:
+                    stream << c;
+
+                    break;
+            }
+        }
+
+        stream << '"';
+    }
+}
 
 TOMLInteger* TOMLInteger::parse(std::istringstream& stream)
 {
@@ -298,12 +407,20 @@ TOMLInteger* TOMLInteger::parse(std::istringstream& stream)
     return new TOMLInteger(atoi(value.c_str()));
 }
 
+TOMLInteger::TOMLInteger(const int value) :
+    value(value) {}
+
 Option<int> TOMLInteger::integer() const
 {
     return value;
 }
 
-TOMLInteger::TOMLInteger(const int value) :
+void TOMLInteger::write(std::ostringstream& stream) const
+{
+    stream << value << '\n';
+}
+
+TOMLBoolean::TOMLBoolean(const bool value) :
     value(value) {}
 
 TOMLBoolean* TOMLBoolean::parse(std::istringstream& stream)
@@ -330,8 +447,18 @@ Option<bool> TOMLBoolean::boolean() const
     return value;
 }
 
-TOMLBoolean::TOMLBoolean(const bool value) :
-    value(value) {}
+void TOMLBoolean::write(std::ostringstream& stream) const
+{
+    if (value)
+    {
+        stream << "true";
+    }
+
+    else
+    {
+        stream << "false";
+    }
+}
 
 TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
 {
@@ -343,7 +470,7 @@ TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
 
         TOMLUtils::skipWhitespace(stream);
 
-        const std::string key = TOMLEntry::parseKey(stream);
+        const std::string key = parseKey(stream);
 
         TOMLUtils::skipWhitespace(stream);
 
@@ -354,10 +481,10 @@ TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
 
         stream.ignore();
 
-        return new TOMLEntry(key, TOMLTable::parse(stream));
+        return new TOMLEntry(key, TOMLTable::parse(stream), true);
     }
 
-    const std::string key = TOMLEntry::parseKey(stream);
+    const std::string key = parseKey(stream);
 
     TOMLUtils::skipWhitespace(stream);
 
@@ -371,13 +498,30 @@ TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
     return new TOMLEntry(key, TOMLValue::parse(stream));
 }
 
+TOMLEntry::TOMLEntry(const std::string& key, const TOMLValue* value, const bool table) :
+    key(key), value(value), table(table) {}
+
 TOMLEntry::~TOMLEntry()
 {
     delete value;
 }
 
-TOMLEntry::TOMLEntry(const std::string& key, const TOMLValue* value) :
-    key(key), value(value) {}
+void TOMLEntry::write(std::ostringstream& stream) const
+{
+    if (table)
+    {
+        stream << "[" << key << "]";
+    }
+
+    else
+    {
+        stream << key << " = ";
+    }
+
+    value->write(stream);
+
+    stream << '\n';
+}
 
 std::string TOMLEntry::parseKey(std::istringstream& stream)
 {
@@ -403,7 +547,7 @@ bool TOMLEntry::keyChar(const char c)
 
 TOML* TOML::parse(std::istringstream& stream)
 {
-    TOML* toml = new TOML();
+    TOML* toml = new TOML({});
 
     while (!stream.eof())
     {
@@ -419,7 +563,9 @@ TOML* TOML::parse(std::istringstream& stream)
 
         try
         {
-            toml->entries.push_back(TOMLEntry::parse(stream));
+            const TOMLEntry* entry = TOMLEntry::parse(stream);
+
+            toml->entries[entry->key] = entry;
         }
 
         catch (const RadialException& ex)
@@ -449,23 +595,40 @@ TOML* TOML::parse(const std::filesystem::path& path)
     return TOML::parse(stream);
 }
 
+TOML::TOML(const std::unordered_map<std::string, const TOMLEntry*>& entries) :
+    entries(entries) {}
+
 TOML::~TOML()
 {
-    for (const TOMLEntry* entry : entries)
+    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
     {
-        delete entry;
+        delete entry.second;
     }
 }
 
 const TOMLValue* TOML::get(const std::string& key) const
 {
-    for (const TOMLEntry* entry : entries)
+    if (entries.count(key))
     {
-        if (entry->key == key)
-        {
-            return entry->value;
-        }
+        return entries.at(key)->value;
     }
 
     return TOMLValue::getDefault();
+}
+
+void TOML::write(std::ostringstream& stream) const
+{
+    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    {
+        entry.second->write(stream);
+    }
+}
+
+void TOML::write(const std::filesystem::path& path) const
+{
+    std::ostringstream stream;
+
+    write(stream);
+
+    Utils::writeString(path, stream.str());
 }

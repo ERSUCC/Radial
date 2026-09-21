@@ -29,7 +29,7 @@ void Build::compile(const BuildOptions* options, BuildEnvironment& env, const st
 
     env.objects.insert(object);
 
-    if (!options->force && std::filesystem::exists(object) && !shouldUpdate(env, file, object))
+    if (!options->force && std::filesystem::exists(object) && !shouldUpdate(options, env, file, object))
     {
         return;
     }
@@ -40,6 +40,8 @@ void Build::compile(const BuildOptions* options, BuildEnvironment& env, const st
     {
         throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }
+
+    updateCache(options, env, file);
 }
 
 void Build::link(const BuildOptions* options, BuildEnvironment& env, const std::filesystem::path& file)
@@ -155,7 +157,7 @@ std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironme
 
 #endif
 
-bool Build::shouldUpdate(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+bool Build::shouldUpdate(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
     if (std::filesystem::last_write_time(file) > std::filesystem::last_write_time(object))
     {
@@ -170,5 +172,34 @@ bool Build::shouldUpdate(const BuildEnvironment& env, const std::filesystem::pat
         }
     }
 
-    return false;
+    const std::filesystem::path cacheFile = env.cache / "source" / (file.filename().string() + ".toml");
+
+    if (!std::filesystem::is_regular_file(cacheFile))
+    {
+        return true;
+    }
+
+    const TOML* toml = TOML::parse(cacheFile);
+
+    const bool debug = toml->get("debug")->boolean().get(!options->debug);
+
+    delete toml;
+
+    return debug != options->debug;
+}
+
+void Build::updateCache(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file)
+{
+    const std::filesystem::path cacheFile = env.cache / "source" / (file.filename().string() + ".toml");
+
+    std::filesystem::create_directories(cacheFile.parent_path());
+
+    const TOML* toml = new TOML(
+    {
+        { "debug", new TOMLEntry("debug", new TOMLBoolean(options->debug)) }
+    });
+
+    toml->write(cacheFile);
+
+    delete toml;
 }

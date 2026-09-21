@@ -107,6 +107,20 @@ std::vector<std::string> Utils::readLines(const std::filesystem::path& path)
     return lines;
 }
 
+void Utils::writeString(const std::filesystem::path& path, const std::string& data)
+{
+    std::ofstream file(path);
+
+    if (!file.is_open())
+    {
+        throw RadialFileException("Failed to open file: \"" + path.string() + "\"");
+    }
+
+    file << data;
+
+    file.close();
+}
+
 std::string Utils::trim(const std::string& str)
 {
     char* data = (char*)malloc(sizeof(char) * (str.size() + 1));
@@ -173,7 +187,7 @@ void Utils::printPrefixed(const std::string& message, const std::string& prefix)
     {
         if (message[i] == '\n')
         {
-            std::cout << prefix << line << "\n";
+            std::cout << prefix << line << '\n';
 
             line = "";
         }
@@ -186,6 +200,6 @@ void Utils::printPrefixed(const std::string& message, const std::string& prefix)
 
     if (!line.empty())
     {
-        std::cout << prefix << line << "\n";
+        std::cout << prefix << line << '\n';
     }
 }

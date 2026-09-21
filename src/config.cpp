@@ -103,11 +103,11 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
         }
     }
 
-    for (const TOMLEntry* define : env.config->get("defines")->table().get({}))
+    for (const std::pair<std::string, const TOMLValue*>& define : env.config->get("defines")->table().get({}))
     {
-        const std::string value = define->value->string().require("Defines must be strings.");
+        const std::string value = define.second->string().require("Defines must be strings.");
 
-        env.defines[define->key] = value;
+        env.defines[define.first] = value;
     }
 
     return env;
