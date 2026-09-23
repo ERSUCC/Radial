@@ -35,6 +35,15 @@ std::unique_ptr<const TOML> Config::readConfig(const std::filesystem::path& root
 
 BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
 {
+    std::unique_ptr<const TOML> global(new TOML({}));
+
+    try
+    {
+        global.reset(TOML::parse(homePath() / ".radial" / "config.toml"));
+    }
+
+    catch (const RadialException& ex) {}
+
     std::unique_ptr<const TOML> config(Config::readConfig(root));
 
     const std::string name = config->get("name")->string().require("No project name specified.");
@@ -48,6 +57,21 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
     BuildEnvironment env = BuildEnvironment(std::move(config), name, stdVersion, dest);
 
     findCompiler(env);
+
+    for (const TOMLValue* include : global->get("include_dirs")->array().get({}))
+    {
+        const std::string value = include->string().get("");
+
+        if (!value.empty())
+        {
+            const std::filesystem::path path(value);
+
+            if (path.is_absolute() && std::filesystem::is_directory(path))
+            {
+                env.includeDirs.insert(value);
+            }
+        }
+    }
 
     for (const TOMLValue* include : env.config->get("include_dirs")->array().get({}))
     {
@@ -79,6 +103,21 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
 
                     env.includes[entry.path()] = includes;
                 }
+            }
+        }
+    }
+
+    for (const TOMLValue* dir : global->get("link_dirs")->array().get({}))
+    {
+        const std::string value = dir->string().get("");
+
+        if (!value.empty())
+        {
+            const std::filesystem::path path(value);
+
+            if (path.is_absolute() && std::filesystem::is_directory(path))
+            {
+                env.libDirs.insert(value);
             }
         }
     }
@@ -118,7 +157,29 @@ BuildEnvironment::BuildEnvironment(std::unique_ptr<const TOML> config, const std
 
 #ifdef _WIN32
 
+#include <wchar.h>
+
 #include <Windows.h>
+#include <objbase.h>
+#include <ShlObj.h>
+
+std::filesystem::path BuildEnvironment::homePath()
+{
+    wchar_t* wpath;
+
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &wpath)))
+    {
+        CoTaskMemFree(wpath);
+
+        throw RadialFileException("Failed to locate home directory.");
+    }
+
+    const std::filesystem::path path(wpath);
+
+    CoTaskMemFree(wpath);
+
+    return path;
+}
 
 void BuildEnvironment::findCompiler(BuildEnvironment& env)
 {
@@ -209,6 +270,21 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 }
 
 #else
+
+#include <pwd.h>
+#include <unistd.h>
+
+std::filesystem::path BuildEnvironment::homePath()
+{
+    const passwd* pw = getpwuid(getuid());
+
+    if (!pw)
+    {
+        throw RadialFileException("Failed to locate home directory.");
+    }
+
+    return pw->pw_dir;
+}
 
 void BuildEnvironment::findCompiler(BuildEnvironment& env)
 {

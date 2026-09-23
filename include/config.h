@@ -53,6 +53,8 @@ struct BuildEnvironment
 private:
     BuildEnvironment(std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest);
 
+    static std::filesystem::path homePath();
+
     static void findCompiler(BuildEnvironment& env);
     static void findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes);
 
