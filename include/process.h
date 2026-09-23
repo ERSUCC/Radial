@@ -7,5 +7,5 @@
 
 struct Process
 {
-    static int run(std::string cmd, const bool display = true);
+    static int run(std::string cmd, const bool primary, const bool display = true);
 };

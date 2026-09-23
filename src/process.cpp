@@ -4,7 +4,19 @@
 
 #include <Windows.h>
 
-int Process::run(std::string cmd, const bool display)
+HANDLE currentProcess = INVALID_HANDLE_VALUE;
+
+BOOL WINAPI handleInterrupt(DWORD control)
+{
+    if (currentProcess != INVALID_HANDLE_VALUE)
+    {
+        TerminateProcess(currentProcess, 0);
+    }
+
+    return TRUE;
+}
+
+int Process::run(std::string cmd, const bool primary, const bool display)
 {
     STARTUPINFO startupInfo = { 0 };
 
@@ -42,7 +54,21 @@ int Process::run(std::string cmd, const bool display)
         throw RadialException("Failed to create subprocess.");
     }
 
+    if (primary)
+    {
+        currentProcess = procInfo.hProcess;
+
+        SetConsoleCtrlHandler(&handleInterrupt, true);
+    }
+
     WaitForSingleObject(procInfo.hProcess, INFINITE);
+
+    if (primary)
+    {
+        SetConsoleCtrlHandler(&handleInterrupt, false);
+
+        currentProcess = INVALID_HANDLE_VALUE;
+    }
 
     DWORD code;
 
@@ -95,11 +121,22 @@ int Process::run(std::string cmd, const bool display)
 #else
 
 #include <poll.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-int Process::run(std::string cmd, const bool display)
+pid_t currentProcess = -1;
+
+void handleInterrupt(int signal, siginfo_t* info, void* context)
+{
+    if (currentProcess != -1)
+    {
+        kill(currentProcess, SIGINT);
+    }
+}
+
+int Process::run(std::string cmd, const bool primary, const bool display)
 {
     int out[2];
     int err[2];
@@ -141,6 +178,19 @@ int Process::run(std::string cmd, const bool display)
         throw RadialException("Failed to create subprocess.");
     }
 
+    struct sigaction prevAction;
+
+    if (primary)
+    {
+        currentProcess = id;
+
+        struct sigaction action = { 0 };
+
+        action.sa_sigaction = &handleInterrupt;
+
+        sigaction(SIGINT, &action, &prevAction);
+    }
+
     if (display)
     {
         pollfd fds[2];
@@ -157,7 +207,7 @@ int Process::run(std::string cmd, const bool display)
         {
             if (ready == -1)
             {
-                throw RadialException("Failed to read from subprocess.");
+                break;
             }
 
             if ((fds[0].revents & POLLHUP) == POLLHUP || (fds[1].revents & POLLHUP) == POLLHUP)
@@ -200,9 +250,16 @@ int Process::run(std::string cmd, const bool display)
         throw RadialException("Failed to close subprocess.");
     }
 
+    if (primary)
+    {
+        sigaction(SIGINT, &prevAction, nullptr);
+
+        currentProcess = -1;
+    }
+
     int code;
 
-    if (wait(&code) == -1)
+    if (waitpid(id, &code, 0) == -1)
     {
         throw RadialException("Failed to close subprocess.");
     }

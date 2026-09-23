@@ -36,7 +36,7 @@ void Build::compile(const BuildOptions* options, BuildEnvironment& env, const st
 
     Utils::info("Compiling " + name);
 
-    if (const int code = Process::run(compileCommand(options, env, file, object)))
+    if (const int code = Process::run(compileCommand(options, env, file, object), false))
     {
         throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }
@@ -48,7 +48,7 @@ void Build::link(const BuildOptions* options, BuildEnvironment& env, const std::
 {
     Utils::info("Linking " + file.filename().string());
 
-    if (const int code = Process::run(linkCommand(options, env, file)))
+    if (const int code = Process::run(linkCommand(options, env, file), false))
     {
         throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }

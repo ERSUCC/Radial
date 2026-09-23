@@ -225,7 +225,7 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 
         try
         {
-            if (Process::run(cmd, false))
+            if (Process::run(cmd, false, false))
             {
                 throw RadialException("Failed to find MSVC. Make sure you have the Visual Studio development tools installed.");
             }

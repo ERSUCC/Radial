@@ -10,7 +10,7 @@ void Run::run(const RunOptions* options)
 
     Utils::info("Running " + env.name);
 
-    const int code = Process::run("\"" + (env.dest / env.name).string() + "\"");
+    const int code = Process::run("\"" + (env.dest / env.name).string() + "\"", true);
 
     Utils::info("Process exited with code " + std::to_string(code));
 }
