@@ -5,7 +5,6 @@
 #include <string>
 #include <string.h>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "exception.h"
@@ -45,6 +44,46 @@ private:
 
 };
 
+template <typename K, typename V> struct ListMap
+{
+    void add(const K& key, V value)
+    {
+        map[key] = value;
+
+        order.push_back(key);
+    }
+
+    inline bool contains(const K& key) const
+    {
+        return map.count(key);
+    }
+
+    inline V get(const K& key) const
+    {
+        return map.at(key);
+    }
+
+    inline size_t size() const
+    {
+        return map.size();
+    }
+
+    inline bool empty() const
+    {
+        return map.empty();
+    }
+
+    inline const std::vector<K>& keys() const
+    {
+        return order;
+    }
+
+private:
+    std::unordered_map<K, V> map;
+    std::vector<K> order;
+
+};
+
 struct TOMLUtils
 {
     static void skipWhitespace(std::istringstream& stream, const bool multiline = false);
@@ -57,7 +96,7 @@ struct TOMLValue
 
     virtual ~TOMLValue();
 
-    virtual Option<std::unordered_map<std::string, const TOMLValue*>> table() const;
+    virtual Option<ListMap<std::string, const TOMLValue*>> table() const;
     virtual Option<std::vector<const TOMLValue*>> array() const;
     virtual Option<std::string> string() const;
     virtual Option<int> integer() const;
@@ -76,15 +115,15 @@ struct TOMLTable : public TOMLValue
 {
     static TOMLTable* parse(std::istringstream& stream);
 
-    TOMLTable(const std::unordered_map<std::string, const TOMLEntry*>& entries);
+    TOMLTable(const std::vector<const TOMLEntry*>& entries);
     ~TOMLTable();
 
-    Option<std::unordered_map<std::string, const TOMLValue*>> table() const override;
+    Option<ListMap<std::string, const TOMLValue*>> table() const override;
 
     void write(std::ostringstream& stream) const override;
 
 private:
-    std::unordered_map<std::string, const TOMLEntry*> entries;
+    ListMap<std::string, const TOMLEntry*> entries;
 
 };
 
@@ -178,7 +217,7 @@ struct TOML
     static TOML* parse(std::istringstream& stream);
     static TOML* parse(const std::filesystem::path& path);
 
-    TOML(const std::unordered_map<std::string, const TOMLEntry*>& entries);
+    TOML(const std::vector<const TOMLEntry*>& entries);
     ~TOML();
 
     const TOMLValue* get(const std::string& key) const;
@@ -187,6 +226,6 @@ struct TOML
     void write(const std::filesystem::path& path) const;
 
 private:
-    std::unordered_map<std::string, const TOMLEntry*> entries;
+    ListMap<std::string, const TOMLEntry*> entries;
 
 };

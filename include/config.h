@@ -8,7 +8,6 @@
 #include <string.h>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 #include "exception.h"
@@ -48,7 +47,7 @@ struct BuildEnvironment
 
     std::unordered_set<std::string> libs;
 
-    std::unordered_map<std::string, std::string> defines;
+    ListMap<std::string, std::string> defines;
 
 private:
     BuildEnvironment(std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest);

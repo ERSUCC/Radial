@@ -65,7 +65,7 @@ TOMLValue* TOMLValue::getDefault()
 
 TOMLValue::~TOMLValue() {}
 
-Option<std::unordered_map<std::string, const TOMLValue*>> TOMLValue::table() const
+Option<ListMap<std::string, const TOMLValue*>> TOMLValue::table() const
 {
     return {};
 }
@@ -112,7 +112,7 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
         {
             const TOMLEntry* entry = TOMLEntry::parse(stream);
 
-            table->entries[entry->key] = entry;
+            table->entries.add(entry->key, entry);
         }
 
         catch (const RadialException& ex)
@@ -135,24 +135,29 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
     return table;
 }
 
-TOMLTable::TOMLTable(const std::unordered_map<std::string, const TOMLEntry*>& entries) :
-    entries(entries) {}
-
-TOMLTable::~TOMLTable()
+TOMLTable::TOMLTable(const std::vector<const TOMLEntry*>& entries)
 {
-    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    for (const TOMLEntry* entry : entries)
     {
-        delete entry.second;
+        this->entries.add(entry->key, entry);
     }
 }
 
-Option<std::unordered_map<std::string, const TOMLValue*>> TOMLTable::table() const
+TOMLTable::~TOMLTable()
 {
-    std::unordered_map<std::string, const TOMLValue*> values;
-
-    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    for (const std::string& key : entries.keys())
     {
-        values[entry.first] = entry.second->value;
+        delete entries.get(key);
+    }
+}
+
+Option<ListMap<std::string, const TOMLValue*>> TOMLTable::table() const
+{
+    ListMap<std::string, const TOMLValue*> values;
+
+    for (const std::string& key : entries.keys())
+    {
+        values.add(key, entries.get(key)->value);
     }
 
     return values;
@@ -160,9 +165,9 @@ Option<std::unordered_map<std::string, const TOMLValue*>> TOMLTable::table() con
 
 void TOMLTable::write(std::ostringstream& stream) const
 {
-    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    for (const std::string& key : entries.keys())
     {
-        entry.second->write(stream);
+        entries.get(key)->write(stream);
     }
 }
 
@@ -510,17 +515,19 @@ void TOMLEntry::write(std::ostringstream& stream) const
 {
     if (table)
     {
-        stream << "[" << key << "]";
+        stream << "\n[" << key << "]\n";
+
+        value->write(stream);
     }
 
     else
     {
         stream << key << " = ";
+
+        value->write(stream);
+
+        stream << '\n';
     }
-
-    value->write(stream);
-
-    stream << '\n';
 }
 
 std::string TOMLEntry::parseKey(std::istringstream& stream)
@@ -565,7 +572,7 @@ TOML* TOML::parse(std::istringstream& stream)
         {
             const TOMLEntry* entry = TOMLEntry::parse(stream);
 
-            toml->entries[entry->key] = entry;
+            toml->entries.add(entry->key, entry);
         }
 
         catch (const RadialException& ex)
@@ -595,22 +602,27 @@ TOML* TOML::parse(const std::filesystem::path& path)
     return TOML::parse(stream);
 }
 
-TOML::TOML(const std::unordered_map<std::string, const TOMLEntry*>& entries) :
-    entries(entries) {}
+TOML::TOML(const std::vector<const TOMLEntry*>& entries)
+{
+    for (const TOMLEntry* entry : entries)
+    {
+        this->entries.add(entry->key, entry);
+    }
+}
 
 TOML::~TOML()
 {
-    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    for (const std::string& key : entries.keys())
     {
-        delete entry.second;
+        delete entries.get(key);
     }
 }
 
 const TOMLValue* TOML::get(const std::string& key) const
 {
-    if (entries.count(key))
+    if (entries.contains(key))
     {
-        return entries.at(key)->value;
+        return entries.get(key)->value;
     }
 
     return TOMLValue::getDefault();
@@ -618,9 +630,9 @@ const TOMLValue* TOML::get(const std::string& key) const
 
 void TOML::write(std::ostringstream& stream) const
 {
-    for (const std::pair<std::string, const TOMLEntry*>& entry : entries)
+    for (const std::string& key : entries.keys())
     {
-        entry.second->write(stream);
+        entries.get(key)->write(stream);
     }
 }
 

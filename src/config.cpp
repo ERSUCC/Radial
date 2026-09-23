@@ -142,11 +142,13 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
         }
     }
 
-    for (const std::pair<std::string, const TOMLValue*>& define : env.config->get("defines")->table().get({}))
-    {
-        const std::string value = define.second->string().require("Defines must be strings.");
+    const ListMap<std::string, const TOMLValue*> defines = env.config->get("defines")->table().get({});
 
-        env.defines[define.first] = value;
+    for (const std::string& key : defines.keys())
+    {
+        const std::string value = defines.get(key)->string().require("Defines must be strings.");
+
+        env.defines.add(key, value);
     }
 
     return env;

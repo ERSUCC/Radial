@@ -70,9 +70,9 @@ std::string Build::compileCommand(const BuildOptions* options, const BuildEnviro
         cmd += " /I\"" + path.string() + "\"";
     }
 
-    for (const std::pair<std::string, std::string>& define : env.defines)
+    for (const std::string& key : env.defines.keys())
     {
-        cmd += " /D" + define.first + "=" + Utils::escapeQuotes(define.second);
+        cmd += " /D" + key + "=" + Utils::escapeQuotes(env.defines.get(key));
     }
 
     cmd += " /Fo\"" + object.string() + "\" \"" + file.string() + "\"";
@@ -123,9 +123,9 @@ std::string Build::compileCommand(const BuildOptions* options, const BuildEnviro
         cmd += " -I \"" + path.string() + "\"";
     }
 
-    for (const std::pair<std::string, std::string>& define : env.defines)
+    for (const std::string& key : env.defines.keys())
     {
-        cmd += " -D" + define.first + "=" + Utils::escapeQuotes(define.second);
+        cmd += " -D" + key + "=" + Utils::escapeQuotes(env.defines.get(key));
     }
 
     cmd += " -o \"" + object.string() + "\" \"" + file.string() + "\"";
@@ -179,13 +179,29 @@ bool Build::shouldUpdate(const BuildOptions* options, const BuildEnvironment& en
         return true;
     }
 
-    const TOML* toml = TOML::parse(cacheFile);
+    const std::unique_ptr<TOML> toml(TOML::parse(cacheFile));
 
-    const bool debug = toml->get("debug")->boolean().get(!options->debug);
+    if (toml->get("debug")->boolean().get(!options->debug) != options->debug)
+    {
+        return true;
+    }
 
-    delete toml;
+    const ListMap<std::string, const TOMLValue*> defines = toml->get("defines")->table().get({});
 
-    return debug != options->debug;
+    if (defines.size() != env.defines.size())
+    {
+        return true;
+    }
+
+    for (const std::string& key : defines.keys())
+    {
+        if (!env.defines.contains(key) || env.defines.get(key) != defines.get(key)->string().get(""))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void Build::updateCache(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file)
@@ -194,10 +210,24 @@ void Build::updateCache(const BuildOptions* options, const BuildEnvironment& env
 
     std::filesystem::create_directories(cacheFile.parent_path());
 
-    const TOML* toml = new TOML(
+    std::vector<const TOMLEntry*> entries =
     {
-        { "debug", new TOMLEntry("debug", new TOMLBoolean(options->debug)) }
-    });
+        new TOMLEntry("debug", new TOMLBoolean(options->debug))
+    };
+
+    if (!env.defines.empty())
+    {
+        std::vector<const TOMLEntry*> defines;
+
+        for (const std::string& key : env.defines.keys())
+        {
+            defines.push_back(new TOMLEntry(key, new TOMLString(env.defines.get(key), true)));
+        }
+
+        entries.push_back(new TOMLEntry("defines", new TOMLTable(defines), true));
+    }
+
+    const TOML* toml = new TOML(entries);
 
     toml->write(cacheFile);
 
