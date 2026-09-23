@@ -179,6 +179,24 @@ std::string Utils::escapeQuotes(const std::string& str)
     return escaped;
 }
 
+std::string Utils::ensureSuffix(const std::string& str, const std::string& suffix)
+{
+    if (str.size() < suffix.size())
+    {
+        return str + suffix;
+    }
+
+    for (size_t i = 1; i <= suffix.size(); i++)
+    {
+        if (str[str.size() - i] != suffix[suffix.size() - i])
+        {
+            return str + suffix;
+        }
+    }
+
+    return str;
+}
+
 void Utils::printPrefixed(const std::string& message, const std::string& prefix)
 {
     std::string line;

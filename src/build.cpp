@@ -96,7 +96,7 @@ std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironme
 
     for (const std::string& lib : env.libs)
     {
-        cmd += " " + lib;
+        cmd += " " + Utils::ensureSuffix(lib, ".lib");
     }
 
     for (const std::filesystem::path& object : env.objects)

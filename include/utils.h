@@ -23,6 +23,7 @@ struct Utils
 
     static std::string trim(const std::string& str);
     static std::string escapeQuotes(const std::string& str);
+    static std::string ensureSuffix(const std::string& str, const std::string& suffix);
 
     static void writeString(const std::filesystem::path& path, const std::string& data);
 
