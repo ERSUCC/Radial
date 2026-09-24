@@ -16,6 +16,29 @@ BOOL WINAPI handleInterrupt(DWORD control)
     return TRUE;
 }
 
+bool readHandle(HANDLE handle, void(*output)(const std::string&))
+{
+    DWORD read;
+
+    if (PeekNamedPipe(handle, nullptr, 0, nullptr, &read, nullptr) && read == 0)
+    {
+        return true;
+    }
+
+    char buffer[1025];
+
+    if (!ReadFile(handle, buffer, 1024, &read, nullptr) || read == 0)
+    {
+        return false;
+    }
+
+    buffer[read] = '\0';
+
+    output(buffer);
+
+    return true;
+}
+
 int Process::run(std::string cmd, const bool primary, const bool display)
 {
     STARTUPINFO startupInfo = { 0 };
@@ -48,9 +71,15 @@ int Process::run(std::string cmd, const bool primary, const bool display)
         CloseHandle(outHandle);
         CloseHandle(errHandle);
         CloseHandle(startupInfo.hStdOutput);
+        CloseHandle(startupInfo.hStdError);
         CloseHandle(procInfo.hProcess);
         CloseHandle(procInfo.hThread);
 
+        throw RadialException("Failed to create subprocess.");
+    }
+
+    if (!CloseHandle(startupInfo.hStdOutput) || !CloseHandle(startupInfo.hStdError))
+    {
         throw RadialException("Failed to create subprocess.");
     }
 
@@ -59,6 +88,17 @@ int Process::run(std::string cmd, const bool primary, const bool display)
         currentProcess = procInfo.hProcess;
 
         SetConsoleCtrlHandler(&handleInterrupt, true);
+    }
+
+    if (display)
+    {
+        while (true)
+        {
+            if (!readHandle(outHandle, Utils::info) || !readHandle(errHandle, Utils::error))
+            {
+                break;
+            }
+        }
     }
 
     WaitForSingleObject(procInfo.hProcess, INFINITE);
@@ -77,37 +117,15 @@ int Process::run(std::string cmd, const bool primary, const bool display)
         throw RadialException("Failed to get subprocess exit code.");
     }
 
-    if (!CloseHandle(startupInfo.hStdOutput) || !CloseHandle(startupInfo.hStdError) || !CloseHandle(procInfo.hProcess) || !CloseHandle(procInfo.hThread))
+    if (!CloseHandle(procInfo.hProcess) || !CloseHandle(procInfo.hThread))
     {
         throw RadialException("Failed to close subprocess.");
     }
 
     if (display)
     {
-        while (true)
-        {
-            char buffer[1025];
-
-            DWORD read;
-
-            if (!ReadFile(outHandle, buffer, 1024, &read, nullptr) || read == 0)
-            {
-                break;
-            }
-
-            buffer[read] = '\0';
-
-            Utils::info(buffer);
-
-            if (!ReadFile(errHandle, buffer, 1024, &read, nullptr) || read == 0)
-            {
-                break;
-            }
-
-            buffer[read] = '\0';
-
-            Utils::error(buffer);
-        }
+        readHandle(outHandle, Utils::info);
+        readHandle(errHandle, Utils::error);
     }
 
     if (!CloseHandle(outHandle) || !CloseHandle(errHandle))
@@ -134,6 +152,34 @@ void handleInterrupt(int signal, siginfo_t* info, void* context)
     {
         kill(currentProcess, SIGINT);
     }
+}
+
+bool readFile(const pollfd& poll, void(*output)(const std::string&))
+{
+    if ((poll.revents & POLLHUP) == POLLHUP)
+    {
+        return false;
+    }
+
+    if ((poll.revents & POLLIN) != POLLIN)
+    {
+        return true;
+    }
+
+    char buffer[1025];
+
+    const ssize_t length = read(poll.fd, buffer, sizeof(char) * 1024);
+
+    if (length == -1)
+    {
+        throw RadialException("Failed to read from subprocess.");
+    }
+
+    buffer[length] = '\0';
+
+    output(buffer);
+
+    return true;
 }
 
 int Process::run(std::string cmd, const bool primary, const bool display)
@@ -191,56 +237,21 @@ int Process::run(std::string cmd, const bool primary, const bool display)
         sigaction(SIGINT, &action, &prevAction);
     }
 
+    pollfd fds[2];
+
     if (display)
     {
-        pollfd fds[2];
-
         fds[0].fd = out[0];
         fds[1].fd = err[0];
 
         fds[0].events = POLLIN;
         fds[1].events = POLLIN;
 
-        char buffer[1025];
-
-        while (const int ready = poll(fds, 2, -1))
+        while (poll(fds, 2, -1) > 0)
         {
-            if (ready == -1)
+            if (!readFile(fds[0], Utils::info) || !readFile(fds[1], Utils::error))
             {
                 break;
-            }
-
-            if ((fds[0].revents & POLLHUP) == POLLHUP || (fds[1].revents & POLLHUP) == POLLHUP)
-            {
-                break;
-            }
-
-            if ((fds[0].revents & POLLIN) == POLLIN)
-            {
-                const ssize_t length = read(out[0], buffer, sizeof(char) * 1024);
-
-                if (length == -1)
-                {
-                    throw RadialException("Failed to read from subprocess.");
-                }
-
-                buffer[length] = '\0';
-
-                Utils::info(buffer);
-            }
-
-            if ((fds[1].revents & POLLIN) == POLLIN)
-            {
-                const ssize_t length = read(err[0], buffer, sizeof(char) * 1024);
-
-                if (length == -1)
-                {
-                    throw RadialException("Failed to read from subprocess.");
-                }
-
-                buffer[length] = '\0';
-
-                Utils::error(buffer);
             }
         }
     }
