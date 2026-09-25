@@ -56,7 +56,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     std::filesystem::create_directories(dest);
 
-    BuildEnvironment env = BuildEnvironment(options, std::move(config), name, stdVersion, dest);
+    BuildEnvironment env = BuildEnvironment(options, std::move(config), name, stdVersion, root, dest);
 
     findCompiler(env);
 
@@ -93,9 +93,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         {
             for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(root / value))
             {
-                const std::string name = entry.path().filename().string();
-
-                if (entry.is_regular_file())
+                if (entry.is_regular_file() && Utils::endsWith(entry.path().string(), ".cpp"))
                 {
                     env.sources.insert(entry.path());
 
@@ -156,8 +154,8 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
     return env;
 }
 
-BuildEnvironment::BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest) :
-    options(options), config(std::move(config)), name(name), stdVersion(stdVersion), dest(dest), cache(dest / ".cache") {}
+BuildEnvironment::BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& root, const std::filesystem::path& dest) :
+    options(options), config(std::move(config)), name(name), stdVersion(stdVersion), root(root), dest(dest), cache(dest / ".cache") {}
 
 #ifdef _WIN32
 

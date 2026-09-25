@@ -25,6 +25,8 @@ struct Utils
     static std::string escapeQuotes(const std::string& str);
     static std::string ensureSuffix(const std::string& str, const std::string& suffix);
 
+    static bool endsWith(const std::string& str, const std::string& suffix);
+
     static std::vector<std::string> split(const std::string& str, const std::string& sep);
 
     static void writeString(const std::filesystem::path& path, const std::string& data);

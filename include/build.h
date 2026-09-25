@@ -38,7 +38,8 @@ private:
     static std::string linkCommand(const BuildEnvironment& env, const std::filesystem::path& file);
 
     static bool shouldUpdate(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
-
     static void updateCache(const BuildEnvironment& env, const std::filesystem::path& file);
+
+    static std::filesystem::path cachePath(const BuildEnvironment& env, const std::filesystem::path& file);
 
 };

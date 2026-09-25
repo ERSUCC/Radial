@@ -170,7 +170,7 @@ bool Build::shouldUpdate(const BuildEnvironment& env, const std::filesystem::pat
         }
     }
 
-    const std::filesystem::path cacheFile = env.cache / "source" / (file.filename().string() + ".toml");
+    const std::filesystem::path cacheFile = cachePath(env, file);
 
     if (!std::filesystem::is_regular_file(cacheFile))
     {
@@ -204,7 +204,7 @@ bool Build::shouldUpdate(const BuildEnvironment& env, const std::filesystem::pat
 
 void Build::updateCache(const BuildEnvironment& env, const std::filesystem::path& file)
 {
-    const std::filesystem::path cacheFile = env.cache / "source" / (file.filename().string() + ".toml");
+    const std::filesystem::path cacheFile = cachePath(env, file);
 
     std::filesystem::create_directories(cacheFile.parent_path());
 
@@ -230,4 +230,11 @@ void Build::updateCache(const BuildEnvironment& env, const std::filesystem::path
     toml->write(cacheFile);
 
     delete toml;
+}
+
+std::filesystem::path Build::cachePath(const BuildEnvironment& env, const std::filesystem::path& file)
+{
+    const std::filesystem::path subdir = std::filesystem::relative(file, env.root).parent_path();
+
+    return env.cache / "source" / subdir / (file.filename().string() + ".toml");
 }

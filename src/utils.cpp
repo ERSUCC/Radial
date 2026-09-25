@@ -133,7 +133,7 @@ std::string Utils::trim(const std::string& str)
         end--;
     }
 
-    if (end <= start)
+    if (end < start)
     {
         return "";
     }
@@ -149,28 +149,6 @@ std::string Utils::trim(const std::string& str)
     free(data);
 
     return trimmed;
-}
-
-std::vector<std::string> Utils::split(const std::string& str, const std::string& sep)
-{
-    char* data = (char*)malloc(sizeof(char) * (str.size() + 1));
-
-    strncpy(data, str.c_str(), str.size() + 1);
-
-    char* token = data;
-
-    strtok(token, sep.c_str());
-
-    std::vector<std::string> items;
-
-    do
-    {
-        items.push_back(token);
-    } while (token = strtok(nullptr, sep.c_str()));
-
-    free(data);
-
-    return items;
 }
 
 std::string Utils::escapeQuotes(const std::string& str)
@@ -209,6 +187,46 @@ std::string Utils::ensureSuffix(const std::string& str, const std::string& suffi
     }
 
     return str;
+}
+
+bool Utils::endsWith(const std::string& str, const std::string& suffix)
+{
+    if (str.size() < suffix.size())
+    {
+        return false;
+    }
+
+    for (size_t i = 1; i <= suffix.size(); i++)
+    {
+        if (str[str.size() - i] != suffix[suffix.size() - i])
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+std::vector<std::string> Utils::split(const std::string& str, const std::string& sep)
+{
+    char* data = (char*)malloc(sizeof(char) * (str.size() + 1));
+
+    strncpy(data, str.c_str(), str.size() + 1);
+
+    char* token = data;
+
+    strtok(token, sep.c_str());
+
+    std::vector<std::string> items;
+
+    do
+    {
+        items.push_back(token);
+    } while (token = strtok(nullptr, sep.c_str()));
+
+    free(data);
+
+    return items;
 }
 
 void Utils::printPrefixed(const std::string& message, const std::string& prefix)

@@ -35,6 +35,7 @@ struct BuildEnvironment
 
     const int stdVersion;
 
+    const std::filesystem::path root;
     const std::filesystem::path dest;
     const std::filesystem::path cache;
 
@@ -53,7 +54,7 @@ struct BuildEnvironment
     ListMap<std::string, std::string> defines;
 
 private:
-    BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest);
+    BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& root, const std::filesystem::path& dest);
 
     static std::filesystem::path homePath();
 
