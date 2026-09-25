@@ -2,9 +2,20 @@
 
 void TOMLUtils::skipWhitespace(std::istringstream& stream, const bool multiline)
 {
-    while (stream.peek() == ' ' || stream.peek() == '\t' || (multiline && stream.peek() == '\n'))
+    while (stream.peek() == '#' || stream.peek() == ' ' || stream.peek() == '\t' || (multiline && stream.peek() == '\n'))
     {
-        stream.ignore();
+        if (stream.peek() == '#')
+        {
+            while (!stream.eof() && stream.peek() != '\n')
+            {
+                stream.ignore();
+            }
+        }
+
+        else
+        {
+            stream.ignore();
+        }
     }
 }
 
@@ -98,10 +109,7 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
 
     while (!stream.eof())
     {
-        while (stream.peek() == '\n')
-        {
-            stream.ignore();
-        }
+        TOMLUtils::skipWhitespace(stream, true);
 
         if (stream.eof() || stream.peek() == '[')
         {
@@ -467,8 +475,6 @@ void TOMLBoolean::write(std::ostringstream& stream) const
 
 TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
 {
-    TOMLUtils::skipWhitespace(stream);
-
     if (stream.peek() == '[')
     {
         stream.ignore();
@@ -558,10 +564,7 @@ TOML* TOML::parse(std::istringstream& stream)
 
     while (!stream.eof())
     {
-        while (stream.peek() == '\n')
-        {
-            stream.ignore();
-        }
+        TOMLUtils::skipWhitespace(stream, true);
 
         if (stream.eof())
         {
