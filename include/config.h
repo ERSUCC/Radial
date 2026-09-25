@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "exception.h"
+#include "options.h"
 #include "process.h"
 #include "toml.h"
 #include "utils.h"
@@ -24,7 +25,9 @@ struct Config
 
 struct BuildEnvironment
 {
-    static BuildEnvironment create(const std::filesystem::path& root);
+    static BuildEnvironment create(const BuildOptions* options);
+
+    const BuildOptions* options;
 
     std::unique_ptr<const TOML> config;
 
@@ -50,7 +53,7 @@ struct BuildEnvironment
     ListMap<std::string, std::string> defines;
 
 private:
-    BuildEnvironment(std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest);
+    BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest);
 
     static std::filesystem::path homePath();
 

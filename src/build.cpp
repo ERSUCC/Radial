@@ -2,26 +2,24 @@
 
 void Build::run(const BuildOptions* options)
 {
-    const std::filesystem::path root = std::filesystem::weakly_canonical(options->root.value_or("."));
+    BuildEnvironment env = BuildEnvironment::create(options);
 
-    BuildEnvironment env = BuildEnvironment::create(root);
-
-    build(options, env);
+    build(env);
 }
 
-void Build::build(const BuildOptions* options, BuildEnvironment& env)
+void Build::build(BuildEnvironment& env)
 {
     Utils::info("Building project " + env.name);
 
     for (const std::filesystem::path& source : env.sources)
     {
-        compile(options, env, source);
+        compile(env, source);
     }
 
-    link(options, env, env.dest / (env.name + BIN_EXT));
+    link(env, env.dest / (env.name + BIN_EXT));
 }
 
-void Build::compile(const BuildOptions* options, BuildEnvironment& env, const std::filesystem::path& file)
+void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
 {
     const std::string name = file.filename().string();
 
@@ -29,26 +27,26 @@ void Build::compile(const BuildOptions* options, BuildEnvironment& env, const st
 
     env.objects.insert(object);
 
-    if (!options->force && std::filesystem::exists(object) && !shouldUpdate(options, env, file, object))
+    if (!env.options->force && std::filesystem::exists(object) && !shouldUpdate(env, file, object))
     {
         return;
     }
 
     Utils::info("Compiling " + name);
 
-    if (const int code = Process::run(compileCommand(options, env, file, object), false))
+    if (const int code = Process::run(compileCommand(env, file, object), false))
     {
         throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }
 
-    updateCache(options, env, file);
+    updateCache(env, file);
 }
 
-void Build::link(const BuildOptions* options, BuildEnvironment& env, const std::filesystem::path& file)
+void Build::link(BuildEnvironment& env, const std::filesystem::path& file)
 {
     Utils::info("Linking " + file.filename().string());
 
-    if (const int code = Process::run(linkCommand(options, env, file), false))
+    if (const int code = Process::run(linkCommand(env, file), false))
     {
         throw RadialException("Compiler returned non-zero exit code " + std::to_string(code));
     }
@@ -56,11 +54,11 @@ void Build::link(const BuildOptions* options, BuildEnvironment& env, const std::
 
 #ifdef _WIN32
 
-std::string Build::compileCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
     std::string cmd = "\"" + env.compilerPath + "\" /nologo /std:c++" + std::to_string(env.stdVersion) + " /EHsc /c";
 
-    if (options->debug)
+    if (env.options->debug)
     {
         cmd += " /MTd";
     }
@@ -80,11 +78,11 @@ std::string Build::compileCommand(const BuildOptions* options, const BuildEnviro
     return cmd;
 }
 
-std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file)
+std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
 {
     std::string cmd = "\"" + env.linkerPath + "\" /nologo /out:\"" + file.string() + "\"";
 
-    if (options->debug)
+    if (env.options->debug)
     {
         cmd += " /debug:full";
     }
@@ -109,11 +107,11 @@ std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironme
 
 #else
 
-std::string Build::compileCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
     std::string cmd = "\"" + env.compilerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -c";
 
-    if (options->debug)
+    if (env.options->debug)
     {
         cmd += " -g";
     }
@@ -133,7 +131,7 @@ std::string Build::compileCommand(const BuildOptions* options, const BuildEnviro
     return cmd;
 }
 
-std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file)
+std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
 {
     std::string cmd = "\"" + env.linkerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -o \"" + file.string() + "\"";
 
@@ -157,7 +155,7 @@ std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironme
 
 #endif
 
-bool Build::shouldUpdate(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+bool Build::shouldUpdate(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
 {
     if (std::filesystem::last_write_time(file) > std::filesystem::last_write_time(object))
     {
@@ -181,7 +179,7 @@ bool Build::shouldUpdate(const BuildOptions* options, const BuildEnvironment& en
 
     const std::unique_ptr<TOML> toml(TOML::parse(cacheFile));
 
-    if (toml->get("debug")->boolean().get(!options->debug) != options->debug)
+    if (toml->get("debug")->boolean().get(!env.options->debug) != env.options->debug)
     {
         return true;
     }
@@ -204,7 +202,7 @@ bool Build::shouldUpdate(const BuildOptions* options, const BuildEnvironment& en
     return false;
 }
 
-void Build::updateCache(const BuildOptions* options, const BuildEnvironment& env, const std::filesystem::path& file)
+void Build::updateCache(const BuildEnvironment& env, const std::filesystem::path& file)
 {
     const std::filesystem::path cacheFile = env.cache / "source" / (file.filename().string() + ".toml");
 
@@ -212,7 +210,7 @@ void Build::updateCache(const BuildOptions* options, const BuildEnvironment& env
 
     std::vector<const TOMLEntry*> entries =
     {
-        new TOMLEntry("debug", new TOMLBoolean(options->debug))
+        new TOMLEntry("debug", new TOMLBoolean(env.options->debug))
     };
 
     if (!env.defines.empty())

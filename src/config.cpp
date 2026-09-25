@@ -33,7 +33,7 @@ std::unique_ptr<const TOML> Config::readConfig(const std::filesystem::path& root
     return config;
 }
 
-BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
+BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 {
     std::unique_ptr<const TOML> global(new TOML({}));
 
@@ -43,6 +43,8 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
     }
 
     catch (const RadialException& ex) {}
+
+    const std::filesystem::path root = std::filesystem::weakly_canonical(options->root.value_or("."));
 
     std::unique_ptr<const TOML> config(Config::readConfig(root));
 
@@ -54,7 +56,7 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
 
     std::filesystem::create_directories(dest);
 
-    BuildEnvironment env = BuildEnvironment(std::move(config), name, stdVersion, dest);
+    BuildEnvironment env = BuildEnvironment(options, std::move(config), name, stdVersion, dest);
 
     findCompiler(env);
 
@@ -154,8 +156,8 @@ BuildEnvironment BuildEnvironment::create(const std::filesystem::path& root)
     return env;
 }
 
-BuildEnvironment::BuildEnvironment(std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest) :
-    config(std::move(config)), name(name), stdVersion(stdVersion), dest(dest), cache(dest / ".cache") {}
+BuildEnvironment::BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& dest) :
+    options(options), config(std::move(config)), name(name), stdVersion(stdVersion), dest(dest), cache(dest / ".cache") {}
 
 #ifdef _WIN32
 
