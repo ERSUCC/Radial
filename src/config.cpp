@@ -62,7 +62,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     for (const TOMLValue* include : global->get("include_dirs")->array().get({}))
     {
-        const std::string value = include->string().get("");
+        const std::string value = Utils::trim(include->string().get(""));
 
         if (!value.empty())
         {
@@ -77,7 +77,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     for (const TOMLValue* include : env.config->get("include_dirs")->array().get({}))
     {
-        const std::string value = include->string().require("`include_dirs` must be an array of strings.");
+        const std::string value = Utils::trim(include->string().require("`include_dirs` must be an array of strings."));
 
         if (!value.empty() && std::filesystem::is_directory(root / value))
         {
@@ -87,7 +87,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     for (const TOMLValue* dir : env.config->get("source_dirs")->array().require("Configuration does not specify any sources."))
     {
-        const std::string value = dir->string().require("`source_dirs` must be an array of strings.");
+        const std::string value = Utils::trim(dir->string().require("`source_dirs` must be an array of strings."));
 
         if (!value.empty() && std::filesystem::is_directory(root / value))
         {
@@ -111,7 +111,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     for (const TOMLValue* dir : global->get("link_dirs")->array().get({}))
     {
-        const std::string value = dir->string().get("");
+        const std::string value = Utils::trim(dir->string().get(""));
 
         if (!value.empty())
         {
@@ -126,7 +126,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     for (const TOMLValue* dir : env.config->get("link_dirs")->array().get({}))
     {
-        const std::string value = dir->string().require("`link_dirs` must be an array of strings.");
+        const std::string value = Utils::trim(dir->string().require("`link_dirs` must be an array of strings."));
 
         if (!value.empty())
         {
@@ -136,7 +136,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     for (const TOMLValue* lib : env.config->get("link_libraries")->array().get({}))
     {
-        const std::string value = lib->string().require("`link_libraries` must be an array of strings.");
+        const std::string value = Utils::trim(lib->string().require("`link_libraries` must be an array of strings."));
 
         if (!value.empty())
         {
