@@ -187,43 +187,25 @@ std::filesystem::path BuildEnvironment::homePath()
 
 void BuildEnvironment::findCompiler(BuildEnvironment& env)
 {
-    const std::filesystem::path compilerPath = env.cache / "compiler-location.txt";
-    const std::filesystem::path linkerPath = env.cache / "linker-location.txt";
-    const std::filesystem::path includePaths = env.cache / "include-paths.txt";
-    const std::filesystem::path libPaths = env.cache / "lib-paths.txt";
+    std::unique_ptr<const TOML> toml;
 
-    const bool compilerExists = std::filesystem::exists(compilerPath);
-    const bool linkerExists = std::filesystem::exists(linkerPath);
-    const bool includeExists = std::filesystem::exists(includePaths);
-    const bool libExists = std::filesystem::exists(libPaths);
+    const std::filesystem::path compilerPath = env.cache / "compiler.toml";
 
-    if (!compilerExists || !linkerExists || !includeExists || !libExists)
+    if (std::filesystem::exists(compilerPath))
     {
-        std::string cmd = "cmd /v:on /c \"vcvars64.bat";
+        toml.reset(TOML::parse(compilerPath));
+    }
 
-        if (!compilerExists)
-        {
-            cmd += " && where cl.exe > \"" + compilerPath.string() + "\"";
-        }
+    else
+    {
+        const std::filesystem::path temp = std::filesystem::temp_directory_path() / "radial_compiler_info.txt";
 
-        if (!linkerExists)
-        {
-            cmd += " && where link.exe > \"" + linkerPath.string() + "\"";
-        }
+        std::string cmd = "cmd /v:on /c \"vcvars64 > nul";
 
-        if (!includeExists)
-        {
-            cmd += " && echo !INCLUDE! > \"" + includePaths.string() + "\"";
-        }
-
-        if (!libExists)
-        {
-            cmd += " && echo !LIB! > \"" + libPaths.string() + "\"";
-        }
-
-        cmd += "\"";
-
-        std::filesystem::create_directories(env.cache);
+        cmd += " && where cl > \"" + temp.string() + "\"";
+        cmd += " && where link >> \"" + temp.string() + "\"";
+        cmd += " && echo !INCLUDE! >> \"" + temp.string() + "\"";
+        cmd += " && echo !LIB! >> \"" + temp.string() + "\"\"";
 
         try
         {
@@ -237,40 +219,50 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
         {
             throw RadialException("Failed to find MSVC. Make sure you have the Visual Studio development tools installed.");
         }
+
+        const std::vector<std::string> sections = Utils::split(Utils::readString(temp), "\n");
+
+        std::filesystem::remove(temp);
+
+        std::vector<const TOMLValue*> includes;
+
+        for (const std::string& path : Utils::split(sections[2], ";"))
+        {
+            includes.push_back(new TOMLString(Utils::trim(path), true));
+        }
+
+        std::vector<const TOMLValue*> links;
+
+        for (const std::string& path : Utils::split(sections[3], ";"))
+        {
+            links.push_back(new TOMLString(Utils::trim(path), true));
+        }
+
+        toml.reset(new TOML(
+        {
+            new TOMLEntry("compiler_path", new TOMLString(Utils::trim(sections[0]), true)),
+            new TOMLEntry("linker_path", new TOMLString(Utils::trim(sections[1]), true)),
+            new TOMLEntry("include_dirs", new TOMLArray(includes)),
+            new TOMLEntry("link_dirs", new TOMLArray(links))
+        }));
+
+        std::filesystem::create_directories(env.cache);
+
+        toml->write(compilerPath);
     }
 
-    env.compilerPath = Utils::trim(Utils::readString(compilerPath));
-    env.linkerPath = Utils::trim(Utils::readString(linkerPath));
+    env.compilerPath = toml->get("compiler_path")->string().require("Invalid build cache.");
+    env.linkerPath = toml->get("linker_path")->string().require("Invalid build cache.");
 
-    const std::string includes = Utils::readString(includePaths);
-
-    char* data = (char*)malloc(sizeof(char) * (includes.size() + 1));
-
-    strncpy(data, includes.c_str(), includes.size() + 1);
-
-    char* token = strtok(data, ";");
-
-    do
+    for (const TOMLValue* path : toml->get("include_dirs")->array().require("Invalid build cache."))
     {
-        env.includeDirs.insert(Utils::trim(token));
-    } while (token = strtok(nullptr, ";"));
+        env.includeDirs.insert(path->string().require("Invalid build cache."));
+    }
 
-    free(data);
-
-    const std::string libs = Utils::readString(libPaths);
-
-    data = (char*)malloc(sizeof(char) * (libs.size() + 1));
-
-    strncpy(data, libs.c_str(), libs.size() + 1);
-
-    token = strtok(data, ";");
-
-    do
+    for (const TOMLValue* path : toml->get("link_dirs")->array().require("Invalid build cache."))
     {
-        env.libDirs.insert(Utils::trim(token));
-    } while (token = strtok(nullptr, ";"));
-
-    free(data);
+        env.libDirs.insert(path->string().require("Invalid build cache."));
+    }
 }
 
 #else

@@ -17,17 +17,9 @@ void Utils::error(const std::string& message)
 
 size_t Utils::numericVersion(const std::string& version)
 {
-    char* data = (char*)malloc(sizeof(char) * (version.size() + 1));
+    const std::vector<std::string> sections = split(version, ".");
 
-    strncpy(data, version.c_str(), version.size() + 1);
-
-    const size_t major = atoll(strtok(data, "."));
-    const size_t minor = atoll(strtok(nullptr, "."));
-    const size_t patch = atoll(strtok(nullptr, "."));
-
-    free(data);
-
-    return major * 65536 + minor * 256 + patch;
+    return atoll(sections[0].c_str()) * 65536 + atoll(sections[1].c_str()) * 256 + atoll(sections[2].c_str());
 }
 
 std::string Utils::readString(const std::filesystem::path& path)
@@ -157,6 +149,28 @@ std::string Utils::trim(const std::string& str)
     free(data);
 
     return trimmed;
+}
+
+std::vector<std::string> Utils::split(const std::string& str, const std::string& sep)
+{
+    char* data = (char*)malloc(sizeof(char) * (str.size() + 1));
+
+    strncpy(data, str.c_str(), str.size() + 1);
+
+    char* token = data;
+
+    strtok(token, sep.c_str());
+
+    std::vector<std::string> items;
+
+    do
+    {
+        items.push_back(token);
+    } while (token = strtok(nullptr, sep.c_str()));
+
+    free(data);
+
+    return items;
 }
 
 std::string Utils::escapeQuotes(const std::string& str)
