@@ -39,10 +39,14 @@ std::string RadialUsageException::getUsageMessage(const std::string& command)
 
     else if (command == "run")
     {
-        message += "Usage: radial run [--help] [--force] [--debug] [<path>]\n\n";
+        message += "Usage: radial run [--help] [--force] [--debug] [<path>] [[--] <args>...]\n\n";
         message += "Run the project in the specified directory. If no path is specified, run the\n";
         message += "project in the current directory. Any outdated artifacts will be automatically\n";
-        message += "compiled before running the project.\n\n";
+        message += "compiled before running the project. If any positional arguments are provided\n";
+        message += "at the end of the command, they will be provided as program arguments to the\n";
+        message += "target executable. Note that if you provide any program arguments but do not\n";
+        message += "specify a project path, you must add `--` as a separator to denote the start of\n";
+        message += "the arguments.\n\n";
         message += "Options:\n\n";
         message += "  --help: Print this help message.\n";
         message += "  --force: Rebuild all artifacts before running, whether or not they are\n";

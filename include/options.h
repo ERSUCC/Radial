@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 #include <string.h>
+#include <vector>
 
 #include "exception.h"
 
@@ -35,6 +36,8 @@ struct BuildOptions : public CommandOptions
 struct RunOptions : public BuildOptions
 {
     RunOptions();
+
+    std::vector<std::string> args;
 };
 
 struct CleanOptions : public CommandOptions

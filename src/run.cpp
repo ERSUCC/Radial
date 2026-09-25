@@ -10,7 +10,14 @@ void Run::run(const RunOptions* options)
 
     Utils::info("Running " + env.name);
 
-    const int code = Process::run("\"" + (env.dest / env.name).string() + "\"", true);
+    std::string cmd = "\"" + (env.dest / env.name).string() + "\"";
+
+    for (const std::string& arg : options->args)
+    {
+        cmd += " \"" + arg + "\"";
+    }
+
+    const int code = Process::run(cmd, true);
 
     Utils::info("Process exited with code " + std::to_string(code));
 }

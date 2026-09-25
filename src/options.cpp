@@ -141,6 +141,11 @@ RunOptions* ProgramOptions::parseRun(char** argv, const int argc)
     {
         if (const std::optional<std::string> flag = getFlag(argv[current]))
         {
+            if (flag.value().empty())
+            {
+                break;
+            }
+
             if (flag == "help")
             {
                 throw RadialUsageException("run");
@@ -170,14 +175,19 @@ RunOptions* ProgramOptions::parseRun(char** argv, const int argc)
         }
     }
 
-    if (argc - current > 1)
+    if (current < argc && strncmp(argv[current], "--", 3))
     {
-        throw RadialArgumentException("Command \"run\" only accepts one positional argument. See `radial run --help` for usage instructions.");
+        options->root = argv[current++];
     }
 
-    if (current < argc)
+    if (current < argc && !strncmp(argv[current], "--", 3))
     {
-        options->root = argv[current];
+        current++;
+    }
+
+    while (current < argc)
+    {
+        options->args.push_back(argv[current++]);
     }
 
     return options;
