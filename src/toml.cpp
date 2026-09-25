@@ -255,7 +255,7 @@ void TOMLArray::write(std::ostringstream& stream) const
         values[i]->write(stream);
     }
 
-    stream << "]";
+    stream << ']';
 }
 
 TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
@@ -351,7 +351,7 @@ void TOMLString::write(std::ostringstream& stream) const
 {
     if (literal)
     {
-        stream << "'" << value << "'";
+        stream << '\'' << value << '\'';
     }
 
     else

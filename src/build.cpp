@@ -72,7 +72,7 @@ std::string Build::compileCommand(const BuildOptions* options, const BuildEnviro
 
     for (const std::string& key : env.defines.keys())
     {
-        cmd += " /D" + key + "=" + Utils::escapeQuotes(env.defines.get(key));
+        cmd += " /D" + key + '=' + Utils::escapeQuotes(env.defines.get(key));
     }
 
     cmd += " /Fo\"" + object.string() + "\" \"" + file.string() + "\"";
@@ -96,12 +96,12 @@ std::string Build::linkCommand(const BuildOptions* options, const BuildEnvironme
 
     for (const std::string& lib : env.libs)
     {
-        cmd += " " + Utils::ensureSuffix(lib, ".lib");
+        cmd += ' ' + Utils::ensureSuffix(lib, ".lib");
     }
 
     for (const std::filesystem::path& object : env.objects)
     {
-        cmd += " \"" + object.string() + "\"";
+        cmd += " \"" + object.string() + '"';
     }
 
     return cmd;
@@ -125,7 +125,7 @@ std::string Build::compileCommand(const BuildOptions* options, const BuildEnviro
 
     for (const std::string& key : env.defines.keys())
     {
-        cmd += " -D" + key + "=" + Utils::escapeQuotes(env.defines.get(key));
+        cmd += " -D" + key + '=' + Utils::escapeQuotes(env.defines.get(key));
     }
 
     cmd += " -o \"" + object.string() + "\" \"" + file.string() + "\"";
