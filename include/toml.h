@@ -84,6 +84,15 @@ private:
 
 };
 
+struct RadialTokenException : public RadialConfigException
+{
+    RadialTokenException(const std::string& expected, std::istringstream& stream);
+
+private:
+    static std::string getMessage(const std::string& expected, std::istringstream& stream);
+
+};
+
 struct TOMLUtils
 {
     static void skipWhitespace(std::istringstream& stream, const bool multiline = false);

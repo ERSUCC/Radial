@@ -1,5 +1,27 @@
 #include "toml.h"
 
+RadialTokenException::RadialTokenException(const std::string& expected, std::istringstream& stream) :
+    RadialConfigException(getMessage(expected, stream)) {}
+
+std::string RadialTokenException::getMessage(const std::string& expected, std::istringstream& stream)
+{
+    const std::string prefix = "Expected " + expected + ", but received ";
+
+    if (stream.eof())
+    {
+        return prefix + "end of file.";
+    }
+
+    const char c = stream.peek();
+
+    if (c == '\n')
+    {
+        return prefix + "newline.";
+    }
+
+    return prefix + "\"" + std::string(1, c) + "\".";
+}
+
 void TOMLUtils::skipWhitespace(std::istringstream& stream, const bool multiline)
 {
     while (stream.peek() == '#' || stream.peek() == ' ' || stream.peek() == '\t' || (multiline && stream.peek() == '\n'))
@@ -51,15 +73,7 @@ TOMLValue* TOMLValue::parse(std::istringstream& stream)
         return TOMLInteger::parse(stream);
     }
 
-    try
-    {
-        return TOMLBoolean::parse(stream);
-    }
-
-    catch (const RadialException& ex)
-    {
-        throw RadialConfigException("Unexpected character \"" + std::string(1, c) + "\".");
-    }
+    return TOMLBoolean::parse(stream);
 }
 
 TOMLValue* TOMLValue::getDefault()
@@ -123,7 +137,7 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
             table->entries.add(entry->key, entry);
         }
 
-        catch (const RadialException& ex)
+        catch (const RadialConfigException& ex)
         {
             delete table;
 
@@ -136,7 +150,7 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
         {
             delete table;
 
-            throw RadialConfigException("Expected newline, but received \"" + std::string(1, stream.peek()) + "\".");
+            throw RadialTokenException("newline", stream);
         }
     }
 
@@ -192,7 +206,7 @@ TOMLArray* TOMLArray::parse(std::istringstream& stream)
             array->values.push_back(TOMLValue::parse(stream));
         }
 
-        catch (const RadialException& ex)
+        catch (const RadialConfigException& ex)
         {
             delete array;
 
@@ -211,7 +225,7 @@ TOMLArray* TOMLArray::parse(std::istringstream& stream)
     {
         delete array;
 
-        throw RadialConfigException("Expected \"]\", but received \"" + std::string(1, stream.peek()) + "\".");
+        throw RadialTokenException("\"]\"", stream);
     }
 
     stream.ignore();
@@ -331,7 +345,7 @@ TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
 
     if (stream.eof())
     {
-        throw RadialConfigException("Unexpected end of file.");
+        throw RadialTokenException("closing quotation mark", stream);
     }
 
     stream.ignore();
@@ -452,7 +466,7 @@ TOMLBoolean* TOMLBoolean::parse(std::istringstream& stream)
         return new TOMLBoolean(false);
     }
 
-    throw RadialConfigException("Invalid configuration.");
+    throw RadialConfigException("Expected value.");
 }
 
 Option<bool> TOMLBoolean::boolean() const
@@ -487,7 +501,7 @@ TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
 
         if (stream.peek() != ']')
         {
-            throw RadialConfigException("Expected \"]\", but received \"" + std::string(1, stream.peek()) + "\".");
+            throw RadialTokenException("\"]\"", stream);
         }
 
         stream.ignore();
@@ -501,7 +515,7 @@ TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
 
     if (stream.peek() != '=')
     {
-        throw RadialConfigException("Expected \"=\", but received \"" + std::string(1, stream.peek()) + "\".");
+        throw RadialTokenException("\"=\"", stream);
     }
 
     stream.ignore();
@@ -540,7 +554,7 @@ std::string TOMLEntry::parseKey(std::istringstream& stream)
 {
     if (!keyChar(stream.peek()))
     {
-        throw RadialConfigException("Invalid key character \"" + std::string(1, stream.peek()) + "\".");
+        throw RadialTokenException("key character", stream);
     }
 
     std::string key;
@@ -578,7 +592,7 @@ TOML* TOML::parse(std::istringstream& stream)
             toml->entries.add(entry->key, entry);
         }
 
-        catch (const RadialException& ex)
+        catch (const RadialConfigException& ex)
         {
             delete toml;
 
@@ -591,7 +605,7 @@ TOML* TOML::parse(std::istringstream& stream)
         {
             delete toml;
 
-            throw RadialConfigException("Expected newline, but received \"" + std::string(1, stream.peek()) + "\".");
+            throw RadialTokenException("newline", stream);
         }
     }
 
