@@ -43,7 +43,7 @@ int main(int argc, char** argv)
     {
         std::cout << ex.what() << "\n";
 
-        return 1;
+        return ex.code;
     }
 
     catch (const RadialException& ex)

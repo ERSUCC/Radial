@@ -18,7 +18,7 @@ ProgramOptions ProgramOptions::parse(char** argv, const int argc)
 {
     if (argc < 1)
     {
-        throw RadialUsageException("");
+        throw RadialUsageException("", 1);
     }
 
     ProgramOptions options;
@@ -31,7 +31,7 @@ ProgramOptions ProgramOptions::parse(char** argv, const int argc)
         {
             if (flag == "help")
             {
-                throw RadialUsageException("");
+                throw RadialUsageException("", 0);
             }
 
             if (flag == "version")
@@ -91,7 +91,7 @@ BuildOptions* ProgramOptions::parseBuild(char** argv, const int argc)
         {
             if (flag == "help")
             {
-                throw RadialUsageException("build");
+                throw RadialUsageException("build", 0);
             }
 
             if (flag == "force")
@@ -148,7 +148,7 @@ RunOptions* ProgramOptions::parseRun(char** argv, const int argc)
 
             if (flag == "help")
             {
-                throw RadialUsageException("run");
+                throw RadialUsageException("run", 0);
             }
 
             if (flag == "force")
@@ -205,7 +205,7 @@ CleanOptions* ProgramOptions::parseClean(char** argv, const int argc)
         {
             if (flag == "help")
             {
-                throw RadialUsageException("clean");
+                throw RadialUsageException("clean", 0);
             }
 
             throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"clean\". Use `radial clean --help` for information about command options.");

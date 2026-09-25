@@ -8,8 +8,8 @@ const char* RadialException::what() const noexcept
     return message.c_str();
 }
 
-RadialUsageException::RadialUsageException(const std::string& command) :
-    RadialException(getUsageMessage(command)) {}
+RadialUsageException::RadialUsageException(const std::string& command, const int code) :
+    RadialException(getUsageMessage(command)), code(code) {}
 
 std::string RadialUsageException::getUsageMessage(const std::string& command)
 {

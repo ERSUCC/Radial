@@ -16,7 +16,9 @@ private:
 
 struct RadialUsageException : public RadialException
 {
-    RadialUsageException(const std::string& command);
+    RadialUsageException(const std::string& command, const int code);
+
+    const int code;
 
 private:
     static std::string getUsageMessage(const std::string& command);
