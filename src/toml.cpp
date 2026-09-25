@@ -201,6 +201,11 @@ TOMLArray* TOMLArray::parse(std::istringstream& stream)
     {
         TOMLUtils::skipWhitespace(stream, true);
 
+        if (stream.peek() == ']')
+        {
+            break;
+        }
+
         try
         {
             array->values.push_back(TOMLValue::parse(stream));
