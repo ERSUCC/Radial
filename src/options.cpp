@@ -11,6 +11,9 @@ BuildOptions::BuildOptions(const CommandType& type) :
 RunOptions::RunOptions() :
     BuildOptions(CommandType::Run) {}
 
+CleanOptions::CleanOptions() :
+    CommandOptions(CommandType::Clean) {}
+
 ProgramOptions ProgramOptions::parse(char** argv, const int argc)
 {
     if (argc < 1)
@@ -60,6 +63,11 @@ ProgramOptions ProgramOptions::parse(char** argv, const int argc)
         else if (!strncmp(argv[current], "run", 4))
         {
             options.commandOptions = parseRun(argv + 1, argc - current - 1);
+        }
+
+        else if (!strncmp(argv[current], "clean", 6))
+        {
+            options.commandOptions = parseClean(argv + 1, argc - current - 1);
         }
 
         else
@@ -165,6 +173,45 @@ RunOptions* ProgramOptions::parseRun(char** argv, const int argc)
     if (argc - current > 1)
     {
         throw RadialArgumentException("Command \"run\" only accepts one positional argument. See `radial run --help` for usage instructions.");
+    }
+
+    if (current < argc)
+    {
+        options->root = argv[current];
+    }
+
+    return options;
+}
+
+CleanOptions* ProgramOptions::parseClean(char** argv, const int argc)
+{
+    CleanOptions* options = new CleanOptions();
+
+    int current = 0;
+
+    while (current < argc)
+    {
+        if (const std::optional<std::string> flag = getFlag(argv[current]))
+        {
+            if (flag == "help")
+            {
+                throw RadialUsageException("clean");
+            }
+
+            throw RadialArgumentException("Unknown option \"" + flag.value() + "\" for command \"clean\". Use `radial clean --help` for information about command options.");
+
+            current++;
+        }
+
+        else
+        {
+            break;
+        }
+    }
+
+    if (argc - current > 1)
+    {
+        throw RadialArgumentException("Command \"clean\" only accepts one positional argument. See `radial clean --help` for usage instructions.");
     }
 
     if (current < argc)

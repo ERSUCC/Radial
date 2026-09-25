@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "build.h"
+#include "clean.h"
 #include "exception.h"
 #include "options.h"
 #include "run.h"
@@ -28,6 +29,11 @@ int main(int argc, char** argv)
 
             case CommandType::Run:
                 Run::run(dynamic_cast<const RunOptions*>(options.commandOptions.value()));
+
+                break;
+
+            case CommandType::Clean:
+                Clean::run(dynamic_cast<const CleanOptions*>(options.commandOptions.value()));
 
                 break;
         }

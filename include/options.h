@@ -9,7 +9,8 @@
 enum struct CommandType
 {
     Build,
-    Run
+    Run,
+    Clean
 };
 
 struct CommandOptions
@@ -36,6 +37,13 @@ struct RunOptions : public BuildOptions
     RunOptions();
 };
 
+struct CleanOptions : public CommandOptions
+{
+    CleanOptions();
+
+    std::optional<std::string> root;
+};
+
 struct ProgramOptions
 {
     static ProgramOptions parse(char** argv, const int argc);
@@ -47,6 +55,7 @@ struct ProgramOptions
 private:
     static BuildOptions* parseBuild(char** argv, const int argc);
     static RunOptions* parseRun(char** argv, const int argc);
+    static CleanOptions* parseClean(char** argv, const int argc);
 
     static std::optional<std::string> getFlag(char* arg);
 

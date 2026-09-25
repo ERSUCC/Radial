@@ -20,7 +20,8 @@ std::string RadialUsageException::getUsageMessage(const std::string& command)
         message += "Usage: radial [--version] [--help] <command> [<args>...]\n\n";
         message += "Commands:\n";
         message += "  build\n";
-        message += "  run\n\n";
+        message += "  run\n";
+        message += "  clean\n\n";
         message += "Use `radial <command> --help` for information about a specific command.";
     }
 
@@ -47,6 +48,19 @@ std::string RadialUsageException::getUsageMessage(const std::string& command)
         message += "  --force: Rebuild all artifacts before running, whether or not they are\n";
         message += "           outdated.\n";
         message += "  --debug: Enable debug mode in compiler and linker.\n\n";
+        message += "Use `radial --help` for information about other commands.";
+    }
+
+    else if (command == "clean")
+    {
+        message += "Usage: radial clean [--help] [<path>]\n\n";
+        message += "Remove cached build files for the project in the specified directory. If no path\n";
+        message += "is specified, clean the project in the current directory. Cleaning removes all\n";
+        message += "saved metadata for a project in addition to incremental compilation output\n";
+        message += "files, so it can be more effective than using the `--force` option with the\n";
+        message += "`build` command in certain situations.\n\n";
+        message += "Options:\n\n";
+        message += "  --help: Print this help message.\n\n";
         message += "Use `radial --help` for information about other commands.";
     }
 
