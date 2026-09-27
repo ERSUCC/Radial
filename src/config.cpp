@@ -82,6 +82,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         if (!value.empty() && std::filesystem::is_directory(root / value))
         {
             env.includeDirs.insert(root / value);
+            env.includeDirsLocal.insert(root / value);
         }
     }
 
@@ -313,34 +314,18 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
         return;
     }
 
-    const std::vector<std::string> lines = Utils::readLines(path);
+    visited[path] = PathSet();
 
-    for (const std::string& line : lines)
+    for (const std::string& line : Utils::readLines(path))
     {
-        const size_t match = line.find("#include");
+        const std::optional<std::string> name = includeName(line);
 
-        if (match == std::string::npos)
+        if (!name)
         {
             continue;
         }
 
-        const size_t start = line.find('\"', match + 9);
-
-        if (start == std::string::npos)
-        {
-            continue;
-        }
-
-        const size_t end = line.find('\"', start + 1);
-
-        if (end == std::string::npos)
-        {
-            continue;
-        }
-
-        const std::string name = line.substr(start + 1, end - start - 1);
-
-        const std::filesystem::path localPath = std::filesystem::weakly_canonical(path.parent_path() / name);
+        const std::filesystem::path localPath = std::filesystem::weakly_canonical(path.parent_path() / name.value());
 
         if (std::filesystem::is_regular_file(localPath))
         {
@@ -352,11 +337,11 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
             continue;
         }
 
-        for (const std::filesystem::path& dir : env.includeDirs)
+        for (const std::filesystem::path& dir : env.includeDirsLocal)
         {
-            const std::filesystem::path includePath = std::filesystem::weakly_canonical(dir / name);
+            const std::filesystem::path includePath = std::filesystem::weakly_canonical(dir / name.value());
 
-            if (std::filesystem::is_regular_file(includePath))
+            if (std::filesystem::is_regular_file(includePath) && std::filesystem::relative(includePath, env.root).string()[0] != '.')
             {
                 includes.insert(includePath);
                 visited[path].insert(includePath);
@@ -367,4 +352,44 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
             }
         }
     }
+}
+
+std::optional<std::string> BuildEnvironment::includeName(const std::string& str)
+{
+    const size_t match = str.find("#include");
+
+    if (match == std::string::npos)
+    {
+        return std::nullopt;
+    }
+
+    size_t start = str.find('"', match + 9);
+
+    if (start != std::string::npos)
+    {
+        const size_t end = str.find('"', start + 1);
+
+        if (end == std::string::npos)
+        {
+            return std::nullopt;
+        }
+
+        return str.substr(start + 1, end - start - 1);
+    }
+
+    start = str.find('<', match + 9);
+
+    if (start == std::string::npos)
+    {
+        return std::nullopt;
+    }
+
+    const size_t end = str.find('>', start + 1);
+
+    if (end == std::string::npos)
+    {
+        return std::nullopt;
+    }
+
+    return str.substr(start + 1, end - start - 1);
 }

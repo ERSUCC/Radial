@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string>
@@ -44,6 +45,7 @@ struct BuildEnvironment
     std::string linkerPath;
 
     PathSet includeDirs;
+    PathSet includeDirsLocal;
     PathSet libDirs;
     PathSet sources;
     PathSet objects;
@@ -61,5 +63,7 @@ private:
 
     static void findCompiler(BuildEnvironment& env);
     static void findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes, PathMap& visited);
+
+    static std::optional<std::string> includeName(const std::string& str);
 
 };
