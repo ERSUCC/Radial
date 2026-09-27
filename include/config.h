@@ -17,6 +17,7 @@
 #include "utils.h"
 
 typedef std::unordered_set<std::filesystem::path> PathSet;
+typedef std::unordered_map<std::filesystem::path, PathSet> PathMap;
 
 struct Config
 {
@@ -47,7 +48,7 @@ struct BuildEnvironment
     PathSet sources;
     PathSet objects;
 
-    std::unordered_map<std::filesystem::path, PathSet> includes;
+    PathMap includes;
 
     std::unordered_set<std::string> libs;
 
@@ -59,6 +60,6 @@ private:
     static std::filesystem::path homePath();
 
     static void findCompiler(BuildEnvironment& env);
-    static void findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes);
+    static void findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes, PathMap& visited);
 
 };

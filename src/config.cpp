@@ -111,13 +111,11 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         }
     }
 
+    PathMap visited;
+
     for (const std::filesystem::path& path : env.sources)
     {
-        PathSet includes;
-
-        findIncludes(env, path, includes);
-
-        env.includes[path] = includes;
+        findIncludes(env, path, env.includes[path], visited);
     }
 
     for (const TOMLValue* dir : global->get("link_dirs")->array().get({}))
@@ -301,8 +299,20 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 
 #endif
 
-void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes)
+void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes, PathMap& visited)
 {
+    if (visited.count(path))
+    {
+        for (const std::filesystem::path& include : visited[path])
+        {
+            includes.insert(include);
+
+            findIncludes(env, include, includes, visited);
+        }
+
+        return;
+    }
+
     const std::vector<std::string> lines = Utils::readLines(path);
 
     for (const std::string& line : lines)
@@ -330,16 +340,14 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
 
         const std::string name = line.substr(start + 1, end - start - 1);
 
-        const std::filesystem::path localPath = path.parent_path() / name;
+        const std::filesystem::path localPath = std::filesystem::weakly_canonical(path.parent_path() / name);
 
         if (std::filesystem::is_regular_file(localPath))
         {
-            if (!includes.count(localPath))
-            {
-                includes.insert(localPath);
+            includes.insert(localPath);
+            visited[path].insert(localPath);
 
-                findIncludes(env, localPath, includes);
-            }
+            findIncludes(env, localPath, includes, visited);
 
             continue;
         }
@@ -350,12 +358,10 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
 
             if (std::filesystem::is_regular_file(includePath))
             {
-                if (!includes.count(includePath))
-                {
-                    includes.insert(includePath);
+                includes.insert(includePath);
+                visited[path].insert(includePath);
 
-                    findIncludes(env, includePath, includes);
-                }
+                findIncludes(env, includePath, includes, visited);
 
                 break;
             }
