@@ -1,6 +1,5 @@
 #pragma once
 
-#include <filesystem>
 #include <memory>
 #include <optional>
 #include <stddef.h>
@@ -13,16 +12,14 @@
 
 #include "exception.h"
 #include "options.h"
+#include "path.h"
 #include "process.h"
 #include "toml.h"
 #include "utils.h"
 
-typedef std::unordered_set<std::filesystem::path> PathSet;
-typedef std::unordered_map<std::filesystem::path, PathSet> PathMap;
-
 struct Config
 {
-    static std::unique_ptr<const TOML> readConfig(const std::filesystem::path& root);
+    static std::unique_ptr<const TOML> readConfig(const Path& root);
 };
 
 struct BuildEnvironment
@@ -37,9 +34,9 @@ struct BuildEnvironment
 
     const int stdVersion;
 
-    const std::filesystem::path root;
-    const std::filesystem::path dest;
-    const std::filesystem::path cache;
+    const Path root;
+    const Path dest;
+    const Path cache;
 
     std::string compilerPath;
     std::string linkerPath;
@@ -57,12 +54,12 @@ struct BuildEnvironment
     ListMap<std::string, std::string> defines;
 
 private:
-    BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& root, const std::filesystem::path& dest);
+    BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const Path& root, const Path& dest);
 
-    static std::filesystem::path homePath();
+    static Path homePath();
 
     static void findCompiler(BuildEnvironment& env);
-    static void findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes, PathMap& visited);
+    static void findIncludes(const BuildEnvironment& env, const Path& path, PathSet& includes, PathMap& visited);
 
     static std::optional<std::string> includeName(const std::string& str);
 

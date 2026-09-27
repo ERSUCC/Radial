@@ -1,6 +1,5 @@
 #pragma once
 
-#include <filesystem>
 #include <sstream>
 #include <string>
 #include <string.h>
@@ -8,6 +7,7 @@
 #include <vector>
 
 #include "exception.h"
+#include "path.h"
 #include "utils.h"
 
 template <typename T> struct Option
@@ -224,7 +224,7 @@ private:
 struct TOML
 {
     static TOML* parse(std::istringstream& stream);
-    static TOML* parse(const std::filesystem::path& path);
+    static TOML* parse(const Path& path);
 
     TOML(const std::vector<const TOMLEntry*>& entries);
     ~TOML();
@@ -232,7 +232,7 @@ struct TOML
     const TOMLValue* get(const std::string& key) const;
 
     void write(std::ostringstream& stream) const;
-    void write(const std::filesystem::path& path) const;
+    void write(const Path& path) const;
 
 private:
     ListMap<std::string, const TOMLEntry*> entries;

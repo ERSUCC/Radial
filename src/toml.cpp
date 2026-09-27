@@ -617,9 +617,9 @@ TOML* TOML::parse(std::istringstream& stream)
     return toml;
 }
 
-TOML* TOML::parse(const std::filesystem::path& path)
+TOML* TOML::parse(const Path& path)
 {
-    std::istringstream stream(Utils::readString(path));
+    std::istringstream stream(path.read());
 
     return TOML::parse(stream);
 }
@@ -658,11 +658,11 @@ void TOML::write(std::ostringstream& stream) const
     }
 }
 
-void TOML::write(const std::filesystem::path& path) const
+void TOML::write(const Path& path) const
 {
     std::ostringstream stream;
 
     write(stream);
 
-    Utils::writeString(path, stream.str());
+    path.write(stream.str());
 }

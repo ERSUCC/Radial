@@ -1,7 +1,5 @@
 #pragma once
 
-#include <chrono>
-#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -9,6 +7,7 @@
 #include "config.h"
 #include "exception.h"
 #include "options.h"
+#include "path.h"
 #include "process.h"
 #include "toml.h"
 #include "utils.h"
@@ -31,15 +30,15 @@ struct Build
     static void build(BuildEnvironment& env);
 
 private:
-    static void compile(BuildEnvironment& env, const std::filesystem::path& file);
-    static void link(BuildEnvironment& env, const std::filesystem::path& file);
+    static void compile(BuildEnvironment& env, const Path& file);
+    static void link(BuildEnvironment& env, const Path& file);
 
-    static std::string compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
-    static std::string linkCommand(const BuildEnvironment& env, const std::filesystem::path& file);
+    static std::string compileCommand(const BuildEnvironment& env, const Path& file, const Path& object);
+    static std::string linkCommand(const BuildEnvironment& env, const Path& file);
 
-    static bool shouldUpdate(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object);
-    static void updateCache(const BuildEnvironment& env, const std::filesystem::path& file);
+    static bool shouldUpdate(const BuildEnvironment& env, const Path& file, const Path& object);
+    static void updateCache(const BuildEnvironment& env, const Path& file);
 
-    static std::filesystem::path cachePath(const BuildEnvironment& env, const std::filesystem::path& file);
+    static Path cachePath(const BuildEnvironment& env, const Path& file);
 
 };

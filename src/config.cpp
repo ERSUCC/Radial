@@ -1,20 +1,20 @@
 #include "config.h"
 
-std::unique_ptr<const TOML> Config::readConfig(const std::filesystem::path& root)
+std::unique_ptr<const TOML> Config::readConfig(const Path& root)
 {
-    if (!std::filesystem::exists(root))
+    if (!root.exists())
     {
         throw RadialFileException("The specified project directory does not exist.");
     }
 
-    if (!std::filesystem::is_directory(root))
+    if (!root.isDirectory())
     {
         throw RadialFileException("The specified project path is not a directory.");
     }
 
-    const std::filesystem::path configPath = root / "build.toml";
+    const Path configPath = root / "build.toml";
 
-    if (!std::filesystem::is_regular_file(configPath))
+    if (!configPath.isFile())
     {
         throw RadialFileException("The specified project directory does not contain a build.toml file.");
     }
@@ -44,7 +44,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     catch (const RadialException& ex) {}
 
-    const std::filesystem::path root = std::filesystem::weakly_canonical(options->root.value_or("."));
+    const Path root = Path::absolute(options->root.value_or("."));
 
     std::unique_ptr<const TOML> config(Config::readConfig(root));
 
@@ -52,9 +52,9 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     const int stdVersion = config->get("std_version")->integer().require("No C++ standard version specified.");
 
-    const std::filesystem::path dest = root / config->get("out_dir")->string().get("build");
+    const Path dest = root / config->get("out_dir")->string().get("build");
 
-    std::filesystem::create_directories(dest);
+    dest.createDirectories();
 
     BuildEnvironment env = BuildEnvironment(options, std::move(config), name, stdVersion, root, dest);
 
@@ -66,9 +66,9 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
         if (!value.empty())
         {
-            const std::filesystem::path path(value);
+            const Path path(value);
 
-            if (path.is_absolute() && std::filesystem::is_directory(path))
+            if (path.isAbsolute() && path.isDirectory())
             {
                 env.includeDirs.insert(path);
             }
@@ -79,7 +79,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
     {
         const std::string value = Utils::trim(include->string().require("`include_dirs` must be an array of strings."));
 
-        if (!value.empty() && std::filesystem::is_directory(root / value))
+        if (!value.empty() && (root / value).isDirectory())
         {
             env.includeDirs.insert(root / value);
             env.includeDirsLocal.insert(root / value);
@@ -92,20 +92,20 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
         if (!value.empty())
         {
-            const std::filesystem::path& resolved = root / value;
+            const Path resolved = root / value;
 
-            if (std::filesystem::is_directory(resolved))
+            if (resolved.isDirectory())
             {
-                for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(resolved))
+                for (const Path& path : resolved.children(true))
                 {
-                    if (entry.is_regular_file() && Utils::endsWith(entry.path().string(), ".cpp"))
+                    if (path.extension() == ".cpp")
                     {
-                        env.sources.insert(entry.path());
+                        env.sources.insert(path);
                     }
                 }
             }
 
-            else if (std::filesystem::is_regular_file(resolved) && Utils::endsWith(resolved.string(), ".cpp"))
+            else if (resolved.isFile() && resolved.extension() == ".cpp")
             {
                 env.sources.insert(resolved);
             }
@@ -114,7 +114,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     PathMap visited;
 
-    for (const std::filesystem::path& path : env.sources)
+    for (const Path& path : env.sources)
     {
         findIncludes(env, path, env.includes[path], visited);
     }
@@ -125,11 +125,11 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
         if (!value.empty())
         {
-            const std::filesystem::path path(value);
+            const Path path(value);
 
-            if (path.is_absolute() && std::filesystem::is_directory(path))
+            if (path.isAbsolute() && path.isDirectory())
             {
-                env.libDirs.insert(value);
+                env.libDirs.insert(path);
             }
         }
     }
@@ -166,7 +166,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
     return env;
 }
 
-BuildEnvironment::BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const std::filesystem::path& root, const std::filesystem::path& dest) :
+BuildEnvironment::BuildEnvironment(const BuildOptions* options, std::unique_ptr<const TOML> config, const std::string& name, const int stdVersion, const Path& root, const Path& dest) :
     options(options), config(std::move(config)), name(name), stdVersion(stdVersion), root(root), dest(dest), cache(dest / ".cache") {}
 
 #ifdef _WIN32
@@ -177,7 +177,7 @@ BuildEnvironment::BuildEnvironment(const BuildOptions* options, std::unique_ptr<
 #include <objbase.h>
 #include <ShlObj.h>
 
-std::filesystem::path BuildEnvironment::homePath()
+Path BuildEnvironment::homePath()
 {
     wchar_t* wpath;
 
@@ -188,7 +188,7 @@ std::filesystem::path BuildEnvironment::homePath()
         throw RadialFileException("Failed to locate home directory.");
     }
 
-    const std::filesystem::path path(wpath);
+    const Path path = Path::absolute(wpath);
 
     CoTaskMemFree(wpath);
 
@@ -199,16 +199,16 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 {
     std::unique_ptr<const TOML> toml;
 
-    const std::filesystem::path compilerPath = env.cache / "compiler.toml";
+    const Path compilerPath = env.cache / "compiler.toml";
 
-    if (std::filesystem::exists(compilerPath))
+    if (compilerPath.exists())
     {
         toml.reset(TOML::parse(compilerPath));
     }
 
     else
     {
-        const std::filesystem::path temp = std::filesystem::temp_directory_path() / "radial_compiler_info.txt";
+        const Path temp = Path::temp("radial_compiler_info.txt");
 
         std::string cmd = "cmd /v:on /c \"vcvars64 > nul";
 
@@ -230,9 +230,9 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
             throw RadialException("Failed to find MSVC. Make sure you have the Visual Studio development tools installed.");
         }
 
-        const std::vector<std::string> sections = Utils::split(Utils::readString(temp), "\n");
+        const std::vector<std::string> sections = Utils::split(temp.read(), "\n");
 
-        std::filesystem::remove(temp);
+        temp.remove();
 
         std::vector<const TOMLValue*> includes;
 
@@ -256,7 +256,7 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
             new TOMLEntry("link_dirs", new TOMLArray(links))
         }));
 
-        std::filesystem::create_directories(env.cache);
+        env.cache.createDirectories();
 
         toml->write(compilerPath);
     }
@@ -266,12 +266,12 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 
     for (const TOMLValue* path : toml->get("include_dirs")->array().require("Invalid build cache."))
     {
-        env.includeDirs.insert(path->string().require("Invalid build cache."));
+        env.includeDirs.insert(Path::absolute(path->string().require("Invalid build cache.")));
     }
 
     for (const TOMLValue* path : toml->get("link_dirs")->array().require("Invalid build cache."))
     {
-        env.libDirs.insert(path->string().require("Invalid build cache."));
+        env.libDirs.insert(Path::absolute(path->string().require("Invalid build cache.")));
     }
 }
 
@@ -280,7 +280,7 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 #include <pwd.h>
 #include <unistd.h>
 
-std::filesystem::path BuildEnvironment::homePath()
+Path BuildEnvironment::homePath()
 {
     const passwd* pw = getpwuid(getuid());
 
@@ -300,11 +300,11 @@ void BuildEnvironment::findCompiler(BuildEnvironment& env)
 
 #endif
 
-void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::filesystem::path& path, PathSet& includes, PathMap& visited)
+void BuildEnvironment::findIncludes(const BuildEnvironment& env, const Path& path, PathSet& includes, PathMap& visited)
 {
     if (visited.count(path))
     {
-        for (const std::filesystem::path& include : visited[path])
+        for (const Path& include : visited[path])
         {
             includes.insert(include);
 
@@ -316,7 +316,7 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
 
     visited[path] = PathSet();
 
-    for (const std::string& line : Utils::readLines(path))
+    for (const std::string& line : path.readLines())
     {
         const std::optional<std::string> name = includeName(line);
 
@@ -325,9 +325,9 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
             continue;
         }
 
-        const std::filesystem::path localPath = std::filesystem::weakly_canonical(path.parent_path() / name.value());
+        const Path localPath = (path.parent() / name.value()).absolute();
 
-        if (std::filesystem::is_regular_file(localPath))
+        if (localPath.isFile())
         {
             includes.insert(localPath);
             visited[path].insert(localPath);
@@ -337,11 +337,11 @@ void BuildEnvironment::findIncludes(const BuildEnvironment& env, const std::file
             continue;
         }
 
-        for (const std::filesystem::path& dir : env.includeDirsLocal)
+        for (const Path& dir : env.includeDirsLocal)
         {
-            const std::filesystem::path includePath = std::filesystem::weakly_canonical(dir / name.value());
+            const Path includePath = (dir / name.value()).absolute();
 
-            if (std::filesystem::is_regular_file(includePath) && std::filesystem::relative(includePath, env.root).string()[0] != '.')
+            if (includePath.isFile() && env.root.contains(includePath))
             {
                 includes.insert(includePath);
                 visited[path].insert(includePath);

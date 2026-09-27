@@ -30,97 +30,6 @@ size_t Utils::numericVersion(const std::string& version)
     return atoll(sections[0].c_str()) * 65536 + atoll(sections[1].c_str()) * 256 + atoll(sections[2].c_str());
 }
 
-std::string Utils::readString(const std::filesystem::path& path)
-{
-    std::ifstream file(path);
-
-    if (!file.is_open())
-    {
-        throw RadialFileException("Failed to read file: \"" + path.string() + "\"");
-    }
-
-    std::string data;
-
-    while (!file.eof())
-    {
-        char buffer[1025];
-
-        file.read(buffer, 1024);
-
-        if (file.bad())
-        {
-            throw RadialFileException("Failed to read file: \"" + path.string() + "\"");
-        }
-
-        buffer[file.gcount()] = '\0';
-
-        data += buffer;
-    }
-
-    file.close();
-
-    return data;
-}
-
-std::vector<std::string> Utils::readLines(const std::filesystem::path& path)
-{
-    std::ifstream file(path);
-
-    if (!file.is_open())
-    {
-        throw RadialFileException("Failed to read file: \"" + path.string() + "\"");
-    }
-
-    std::vector<std::string> lines;
-
-    std::string line;
-
-    while (!file.eof())
-    {
-        char buffer[1025];
-
-        file.read(buffer, 1024);
-
-        if (file.bad())
-        {
-            throw RadialFileException("Failed to read file: \"" + path.string() + "\"");
-        }
-
-        for (size_t i = 0; i < file.gcount(); i++)
-        {
-            if (buffer[i] == '\n')
-            {
-                lines.push_back(line);
-
-                line = "";
-            }
-
-            else
-            {
-                line += buffer[i];
-            }
-        }
-    }
-
-    file.close();
-
-    return lines;
-}
-
-void Utils::writeString(const std::filesystem::path& path, const std::string& data)
-{
-    std::ofstream file(path);
-
-    if (!file.is_open())
-    {
-        throw RadialFileException("Failed to open file: \"" + path.string() + "\"");
-    }
-
-    file << data;
-
-    file.close();
-}
-
 std::string Utils::trim(const std::string& str)
 {
     char* data = (char*)malloc(sizeof(char) * (str.size() + 1));
@@ -195,24 +104,6 @@ std::string Utils::ensureSuffix(const std::string& str, const std::string& suffi
     }
 
     return str;
-}
-
-bool Utils::endsWith(const std::string& str, const std::string& suffix)
-{
-    if (str.size() < suffix.size())
-    {
-        return false;
-    }
-
-    for (size_t i = 1; i <= suffix.size(); i++)
-    {
-        if (str[str.size() - i] != suffix[suffix.size() - i])
-        {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 std::vector<std::string> Utils::split(const std::string& str, const std::string& sep)

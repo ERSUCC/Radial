@@ -11,7 +11,7 @@ void Build::build(BuildEnvironment& env)
 {
     Utils::info("Building project " + env.name);
 
-    for (const std::filesystem::path& source : env.sources)
+    for (const Path& source : env.sources)
     {
         compile(env, source);
     }
@@ -19,15 +19,15 @@ void Build::build(BuildEnvironment& env)
     link(env, env.dest / (env.name + BIN_EXT));
 }
 
-void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
+void Build::compile(BuildEnvironment& env, const Path& file)
 {
-    const std::string name = file.filename().string();
+    const std::string name = file.name();
 
-    const std::filesystem::path object = env.dest / (name + OBJ_EXT);
+    const Path object = env.dest / (name + OBJ_EXT);
 
     env.objects.insert(object);
 
-    if (!env.options->force && std::filesystem::exists(object) && !shouldUpdate(env, file, object))
+    if (!env.options->force && object.exists() && !shouldUpdate(env, file, object))
     {
         return;
     }
@@ -42,9 +42,9 @@ void Build::compile(BuildEnvironment& env, const std::filesystem::path& file)
     updateCache(env, file);
 }
 
-void Build::link(BuildEnvironment& env, const std::filesystem::path& file)
+void Build::link(BuildEnvironment& env, const Path& file)
 {
-    Utils::info("Linking " + file.filename().string());
+    Utils::info("Linking " + file.name());
 
     if (const int code = Process::run(linkCommand(env, file), false))
     {
@@ -54,7 +54,7 @@ void Build::link(BuildEnvironment& env, const std::filesystem::path& file)
 
 #ifdef _WIN32
 
-std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+std::string Build::compileCommand(const BuildEnvironment& env, const Path& file, const Path& object)
 {
     std::string cmd = "\"" + env.compilerPath + "\" /nologo /std:c++" + std::to_string(env.stdVersion) + " /EHsc /c";
 
@@ -63,7 +63,7 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
         cmd += " /MTd";
     }
 
-    for (const std::filesystem::path& path : env.includeDirs)
+    for (const Path& path : env.includeDirs)
     {
         cmd += " /I\"" + path.string() + "\"";
     }
@@ -78,7 +78,7 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
     return cmd;
 }
 
-std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
+std::string Build::linkCommand(const BuildEnvironment& env, const Path& file)
 {
     std::string cmd = "\"" + env.linkerPath + "\" /nologo /out:\"" + file.string() + "\"";
 
@@ -87,7 +87,7 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
         cmd += " /debug:full";
     }
 
-    for (const std::filesystem::path& path : env.libDirs)
+    for (const Path& path : env.libDirs)
     {
         cmd += " /libpath:\"" + path.string() + "\"";
     }
@@ -97,7 +97,7 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
         cmd += ' ' + Utils::ensureSuffix(lib, ".lib");
     }
 
-    for (const std::filesystem::path& object : env.objects)
+    for (const Path& object : env.objects)
     {
         cmd += " \"" + object.string() + '"';
     }
@@ -107,7 +107,7 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
 
 #else
 
-std::string Build::compileCommand(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+std::string Build::compileCommand(const BuildEnvironment& env, const Path& file, const Path& object)
 {
     std::string cmd = "\"" + env.compilerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -c";
 
@@ -116,7 +116,7 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
         cmd += " -g";
     }
 
-    for (const std::filesystem::path& path : env.includeDirs)
+    for (const Path& path : env.includeDirs)
     {
         cmd += " -I \"" + path.string() + "\"";
     }
@@ -131,11 +131,11 @@ std::string Build::compileCommand(const BuildEnvironment& env, const std::filesy
     return cmd;
 }
 
-std::string Build::linkCommand(const BuildEnvironment& env, const std::filesystem::path& file)
+std::string Build::linkCommand(const BuildEnvironment& env, const Path& file)
 {
     std::string cmd = "\"" + env.linkerPath + "\" -std=c++" + std::to_string(env.stdVersion) + " -o \"" + file.string() + "\"";
 
-    for (const std::filesystem::path& path : env.libDirs)
+    for (const Path& path : env.libDirs)
     {
         cmd += " -L \"" + path.string() + "\"";
     }
@@ -145,7 +145,7 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
         cmd += " -l" + lib;
     }
 
-    for (const std::filesystem::path& object : env.objects)
+    for (const Path& object : env.objects)
     {
         cmd += " \"" + object.string() + "\"";
     }
@@ -155,24 +155,24 @@ std::string Build::linkCommand(const BuildEnvironment& env, const std::filesyste
 
 #endif
 
-bool Build::shouldUpdate(const BuildEnvironment& env, const std::filesystem::path& file, const std::filesystem::path& object)
+bool Build::shouldUpdate(const BuildEnvironment& env, const Path& file, const Path& object)
 {
-    if (std::filesystem::last_write_time(file) > std::filesystem::last_write_time(object))
+    if (file.lastWrite() > object.lastWrite())
     {
         return true;
     }
 
-    for (const std::filesystem::path& include : env.includes.at(file))
+    for (const Path& include : env.includes.at(file))
     {
-        if (std::filesystem::last_write_time(include) > std::filesystem::last_write_time(object))
+        if (include.lastWrite() > object.lastWrite())
         {
             return true;
         }
     }
 
-    const std::filesystem::path cacheFile = cachePath(env, file);
+    const Path cacheFile = cachePath(env, file);
 
-    if (!std::filesystem::is_regular_file(cacheFile))
+    if (!cacheFile.isFile())
     {
         return true;
     }
@@ -202,11 +202,11 @@ bool Build::shouldUpdate(const BuildEnvironment& env, const std::filesystem::pat
     return false;
 }
 
-void Build::updateCache(const BuildEnvironment& env, const std::filesystem::path& file)
+void Build::updateCache(const BuildEnvironment& env, const Path& file)
 {
-    const std::filesystem::path cacheFile = cachePath(env, file);
+    const Path cacheFile = cachePath(env, file);
 
-    std::filesystem::create_directories(cacheFile.parent_path());
+    cacheFile.parent().createDirectories();
 
     std::vector<const TOMLEntry*> entries =
     {
@@ -232,9 +232,9 @@ void Build::updateCache(const BuildEnvironment& env, const std::filesystem::path
     delete toml;
 }
 
-std::filesystem::path Build::cachePath(const BuildEnvironment& env, const std::filesystem::path& file)
+Path Build::cachePath(const BuildEnvironment& env, const Path& file)
 {
-    const std::filesystem::path subdir = std::filesystem::relative(file, env.root).parent_path();
+    const Path subdir = file.relative(env.root).parent();
 
-    return env.cache / "source" / subdir / (file.filename().string() + ".toml");
+    return env.cache / "source" / subdir / (file.name() + ".toml");
 }
