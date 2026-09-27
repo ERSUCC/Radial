@@ -70,7 +70,7 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
             if (path.is_absolute() && std::filesystem::is_directory(path))
             {
-                env.includeDirs.insert(value);
+                env.includeDirs.insert(path);
             }
         }
     }
@@ -85,26 +85,39 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         }
     }
 
-    for (const TOMLValue* dir : env.config->get("source_dirs")->array().require("Configuration does not specify any sources."))
+    for (const TOMLValue* path : env.config->get("source_paths")->array().require("Configuration does not specify any sources."))
     {
-        const std::string value = Utils::trim(dir->string().require("`source_dirs` must be an array of strings."));
+        const std::string value = Utils::trim(path->string().require("`source_paths` must be an array of strings."));
 
-        if (!value.empty() && std::filesystem::is_directory(root / value))
+        if (!value.empty())
         {
-            for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(root / value))
+            const std::filesystem::path& resolved = root / value;
+
+            if (std::filesystem::is_directory(resolved))
             {
-                if (entry.is_regular_file() && Utils::endsWith(entry.path().string(), ".cpp"))
+                for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(resolved))
                 {
-                    env.sources.insert(entry.path());
-
-                    PathSet includes;
-
-                    findIncludes(env, entry.path(), includes);
-
-                    env.includes[entry.path()] = includes;
+                    if (entry.is_regular_file() && Utils::endsWith(entry.path().string(), ".cpp"))
+                    {
+                        env.sources.insert(entry.path());
+                    }
                 }
             }
+
+            else if (std::filesystem::is_regular_file(resolved) && Utils::endsWith(resolved.string(), ".cpp"))
+            {
+                env.sources.insert(resolved);
+            }
         }
+    }
+
+    for (const std::filesystem::path& path : env.sources)
+    {
+        PathSet includes;
+
+        findIncludes(env, path, includes);
+
+        env.includes[path] = includes;
     }
 
     for (const TOMLValue* dir : global->get("link_dirs")->array().get({}))
