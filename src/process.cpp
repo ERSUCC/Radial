@@ -16,7 +16,7 @@ BOOL WINAPI handleInterrupt(DWORD control)
     return TRUE;
 }
 
-bool readHandle(HANDLE handle, void(*output)(const std::string&))
+bool readHandle(HANDLE handle)
 {
     DWORD read;
 
@@ -34,7 +34,7 @@ bool readHandle(HANDLE handle, void(*output)(const std::string&))
 
     buffer[read] = '\0';
 
-    output(buffer);
+    std::cout << buffer;
 
     return true;
 }
@@ -94,7 +94,7 @@ int Process::run(std::string cmd, const bool primary, const bool display)
     {
         while (true)
         {
-            if (!readHandle(outHandle, Utils::info) || !readHandle(errHandle, Utils::error))
+            if (!readHandle(outHandle) || !readHandle(errHandle))
             {
                 break;
             }
@@ -124,8 +124,8 @@ int Process::run(std::string cmd, const bool primary, const bool display)
 
     if (display)
     {
-        readHandle(outHandle, Utils::info);
-        readHandle(errHandle, Utils::error);
+        readHandle(outHandle);
+        readHandle(errHandle);
     }
 
     if (!CloseHandle(outHandle) || !CloseHandle(errHandle))
@@ -154,7 +154,7 @@ void handleInterrupt(int signal, siginfo_t* info, void* context)
     }
 }
 
-bool readFile(const pollfd& poll, void(*output)(const std::string&))
+bool readFile(const pollfd& poll)
 {
     if ((poll.revents & POLLHUP) == POLLHUP)
     {
@@ -177,7 +177,7 @@ bool readFile(const pollfd& poll, void(*output)(const std::string&))
 
     buffer[length] = '\0';
 
-    output(buffer);
+    std::cout << buffer;
 
     return true;
 }
@@ -249,7 +249,7 @@ int Process::run(std::string cmd, const bool primary, const bool display)
 
         while (poll(fds, 2, -1) > 0)
         {
-            if (!readFile(fds[0], Utils::info) || !readFile(fds[1], Utils::error))
+            if (!readFile(fds[0]) || !readFile(fds[1]))
             {
                 break;
             }
