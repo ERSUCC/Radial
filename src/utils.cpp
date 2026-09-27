@@ -7,12 +7,20 @@ void Utils::info(const std::string& message)
 
 void Utils::warning(const std::string& message)
 {
+    std::cout << "\x1b[38;2;210;210;50m";
+
     printPrefixed(message, "[warning] ");
+
+    std::cout << "\x1b[49;;m";
 }
 
 void Utils::error(const std::string& message)
 {
+    std::cout << "\x1b[38;2;255;128;128m";
+
     printPrefixed(message, "[error] ");
+
+    std::cout << "\x1b[49;;m";
 }
 
 size_t Utils::numericVersion(const std::string& version)
