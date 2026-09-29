@@ -24,6 +24,8 @@ struct Utils
 
     static std::vector<std::string> split(const std::string& str, const std::string& sep);
 
+    static std::string readableHash(const std::string& str);
+
 private:
     static void printPrefixed(const std::string& message, const std::string& prefix);
 

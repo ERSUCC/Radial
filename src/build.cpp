@@ -22,8 +22,9 @@ void Build::build(BuildEnvironment& env)
 void Build::compile(BuildEnvironment& env, const Path& file)
 {
     const std::string name = file.name();
+    const std::string subdir = Utils::readableHash(file.absolute().parent().string());
 
-    const Path object = env.dest / (name + OBJ_EXT);
+    const Path object = env.cache / "object" / subdir / (name + OBJ_EXT);
 
     env.objects.insert(object);
 
@@ -31,6 +32,8 @@ void Build::compile(BuildEnvironment& env, const Path& file)
     {
         return;
     }
+
+    object.parent().createDirectories();
 
     Utils::info("Compiling " + name);
 
@@ -234,7 +237,7 @@ void Build::updateCache(const BuildEnvironment& env, const Path& file)
 
 Path Build::cachePath(const BuildEnvironment& env, const Path& file)
 {
-    const Path subdir = file.relative(env.root).parent();
+    const std::string subdir = Utils::readableHash(file.absolute().parent().string());
 
     return env.cache / "source" / subdir / (file.name() + ".toml");
 }

@@ -147,6 +147,30 @@ std::vector<std::string> Utils::split(const std::string& str, const std::string&
     return items;
 }
 
+std::string Utils::readableHash(const std::string& str)
+{
+    const size_t hash = std::hash<std::string>()(str);
+
+    std::string result;
+
+    for (size_t i = 0; i < sizeof(size_t) * 8; i += 4)
+    {
+        const char c = (hash >> i) & 0b1111;
+
+        if (c < 10)
+        {
+            result += 48 + c;
+        }
+
+        else
+        {
+            result += 87 + c;
+        }
+    }
+
+    return result;
+}
+
 void Utils::printPrefixed(const std::string& message, const std::string& prefix)
 {
     std::string line;

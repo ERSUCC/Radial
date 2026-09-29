@@ -66,11 +66,6 @@ struct Path
         return path.parent_path();
     }
 
-    inline Path relative(const Path& path) const
-    {
-        return std::filesystem::relative(this->path, path.path);
-    }
-
     inline Path absolute() const
     {
         return Path::absolute(path);
