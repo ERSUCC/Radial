@@ -66,6 +66,8 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
 
     dest.createDirectories();
 
+    const ListMap<std::string, const TOMLValue*> osTable = config->get(OS_KEY)->table().get({});
+
     BuildEnvironment env = BuildEnvironment(options, std::move(config), name, stdVersion, root, dest);
 
     findCompiler(env);
@@ -85,9 +87,24 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         }
     }
 
+    std::vector<const TOMLValue*> includeDirs;
+
     for (const TOMLValue* include : env.config->get("include_dirs")->array().get({}))
     {
-        const std::string value = Utils::trim(include->string().require("`include_dirs` must be an array of strings."));
+        includeDirs.push_back(include);
+    }
+
+    if (osTable.contains("include_dirs"))
+    {
+        for (const TOMLValue* dir : osTable.get("include_dirs")->array().get({}))
+        {
+            includeDirs.push_back(dir);
+        }
+    }
+
+    for (const TOMLValue* dir : includeDirs)
+    {
+        const std::string value = Utils::trim(dir->string().require("`include_dirs` must be an array of strings."));
 
         if (!value.empty() && (root / value).isDirectory())
         {
@@ -96,7 +113,27 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         }
     }
 
-    for (const TOMLValue* path : env.config->get("source_paths")->array().require("Configuration does not specify any sources."))
+    std::vector<const TOMLValue*> sourcePaths;
+
+    for (const TOMLValue* path : env.config->get("source_paths")->array().get({}))
+    {
+        sourcePaths.push_back(path);
+    }
+
+    if (osTable.contains("source_paths"))
+    {
+        for (const TOMLValue* path : osTable.get("source_paths")->array().get({}))
+        {
+            sourcePaths.push_back(path);
+        }
+    }
+
+    if (sourcePaths.empty())
+    {
+        throw RadialConfigException("Configuration does not specify any sources.", SourceLocation(0, 0));
+    }
+
+    for (const TOMLValue* path : sourcePaths)
     {
         const std::string value = Utils::trim(path->string().require("`source_paths` must be an array of strings."));
 
@@ -144,7 +181,22 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         }
     }
 
+    std::vector<const TOMLValue*> linkDirs;
+
     for (const TOMLValue* dir : env.config->get("link_dirs")->array().get({}))
+    {
+        linkDirs.push_back(dir);
+    }
+
+    if (osTable.contains("link_dirs"))
+    {
+        for (const TOMLValue* dir : osTable.get("link_dirs")->array().get({}))
+        {
+            linkDirs.push_back(dir);
+        }
+    }
+
+    for (const TOMLValue* dir : linkDirs)
     {
         const std::string value = Utils::trim(dir->string().require("`link_dirs` must be an array of strings."));
 
@@ -154,7 +206,22 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
         }
     }
 
+    std::vector<const TOMLValue*> libs;
+
     for (const TOMLValue* lib : env.config->get("link_libraries")->array().get({}))
+    {
+        libs.push_back(lib);
+    }
+
+    if (osTable.contains("link_libraries"))
+    {
+        for (const TOMLValue* lib : osTable.get("link_libraries")->array().get({}))
+        {
+            libs.push_back(lib);
+        }
+    }
+
+    for (const TOMLValue* lib : libs)
     {
         const std::string value = Utils::trim(lib->string().require("`link_libraries` must be an array of strings."));
 
@@ -169,6 +236,15 @@ BuildEnvironment BuildEnvironment::create(const BuildOptions* options)
     for (const std::string& key : defines.keys())
     {
         const std::string value = defines.get(key)->string().require("Defines must be strings.");
+
+        env.defines.add(key, value);
+    }
+
+    const ListMap<std::string, const TOMLValue*> osDefines = env.config->get(std::string(OS_KEY) + ".defines")->table().get({});
+
+    for (const std::string& key : osDefines.keys())
+    {
+        const std::string value = osDefines.get(key)->string().require("Defines must be strings.");
 
         env.defines.add(key, value);
     }

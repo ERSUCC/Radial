@@ -600,7 +600,7 @@ std::string TOMLEntry::parseKey(Source& source)
 
 bool TOMLEntry::keyChar(const char c)
 {
-    return isalnum(c) || c == '_' || c == '-';
+    return isalnum(c) || c == '_' || c == '-' || c == '.';
 }
 
 TOML* TOML::parse(Source& source)

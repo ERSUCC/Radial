@@ -18,6 +18,20 @@
 #include "toml.h"
 #include "utils.h"
 
+#ifdef _WIN32
+
+#define OS_KEY "windows"
+
+#elif __APPLE__
+
+#define OS_KEY "mac"
+
+#else
+
+#define OS_KEY "linux"
+
+#endif
+
 struct Config
 {
     static std::unique_ptr<const TOML> readConfig(const Path& root);
