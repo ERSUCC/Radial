@@ -77,5 +77,15 @@ RadialArgumentException::RadialArgumentException(const std::string& message) :
 RadialFileException::RadialFileException(const std::string& message) :
     RadialException(message) {}
 
-RadialConfigException::RadialConfigException(const std::string& message) :
-    RadialException(message) {}
+RadialConfigException::RadialConfigException(const std::string& message, const SourceLocation& location) :
+    RadialException(getMessage(message, location)) {}
+
+std::string RadialConfigException::getMessage(const std::string& message, const SourceLocation& location)
+{
+    if (location.line > 0 && location.character > 0)
+    {
+        return "Configuration error at line " + std::to_string(location.line) + " character " + std::to_string(location.character) + ": " + message;
+    }
+
+    return "Configuration error: " + message;
+}

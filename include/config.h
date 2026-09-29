@@ -14,6 +14,7 @@
 #include "options.h"
 #include "path.h"
 #include "process.h"
+#include "source.h"
 #include "toml.h"
 #include "utils.h"
 

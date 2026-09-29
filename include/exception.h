@@ -3,6 +3,8 @@
 #include <exception>
 #include <string>
 
+#include "source.h"
+
 struct RadialException : public std::exception
 {
     RadialException(const std::string& message);
@@ -37,5 +39,9 @@ struct RadialFileException : public RadialException
 
 struct RadialConfigException : public RadialException
 {
-    RadialConfigException(const std::string& message);
+    RadialConfigException(const std::string& message, const SourceLocation& location);
+
+private:
+    static std::string getMessage(const std::string& message, const SourceLocation& location);
+
 };

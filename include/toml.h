@@ -1,6 +1,5 @@
 #pragma once
 
-#include <sstream>
 #include <string>
 #include <string.h>
 #include <unordered_map>
@@ -8,14 +7,16 @@
 
 #include "exception.h"
 #include "path.h"
+#include "source.h"
 #include "utils.h"
 
 template <typename T> struct Option
 {
-    Option(T value) :
-        value(value), exists(true) {}
+    Option(const SourceLocation& location, T value) :
+        location(location), value(value), exists(true) {}
 
-    Option() {}
+    Option(const SourceLocation& location) :
+        location(location) {}
 
     T get(T defaultValue)
     {
@@ -34,10 +35,12 @@ template <typename T> struct Option
             return value;
         }
 
-        throw RadialConfigException(message);
+        throw RadialConfigException(message, location);
     }
 
 private:
+    const SourceLocation location;
+
     T value;
 
     const bool exists = false;
@@ -86,22 +89,19 @@ private:
 
 struct RadialTokenException : public RadialConfigException
 {
-    RadialTokenException(const std::string& expected, std::istringstream& stream);
+    RadialTokenException(const std::string& expected, Source& source);
 
 private:
-    static std::string getMessage(const std::string& expected, std::istringstream& stream);
+    static std::string getMessage(const std::string& expected, Source& stream);
 
-};
-
-struct TOMLUtils
-{
-    static void skipWhitespace(std::istringstream& stream, const bool multiline = false);
 };
 
 struct TOMLValue
 {
-    static TOMLValue* parse(std::istringstream& stream);
+    static TOMLValue* parse(Source& source);
     static TOMLValue* getDefault();
+
+    TOMLValue(const SourceLocation& location);
 
     virtual ~TOMLValue();
 
@@ -113,6 +113,8 @@ struct TOMLValue
 
     virtual void write(std::ostringstream& stream) const;
 
+    const SourceLocation location;
+
 private:
     static TOMLValue* defaultValue;
 
@@ -122,8 +124,9 @@ struct TOMLEntry;
 
 struct TOMLTable : public TOMLValue
 {
-    static TOMLTable* parse(std::istringstream& stream);
+    static TOMLTable* parse(Source& source);
 
+    TOMLTable(const SourceLocation& location, const std::vector<const TOMLEntry*>& entries);
     TOMLTable(const std::vector<const TOMLEntry*>& entries);
     ~TOMLTable();
 
@@ -138,8 +141,9 @@ private:
 
 struct TOMLArray : public TOMLValue
 {
-    static TOMLArray* parse(std::istringstream& stream);
+    static TOMLArray* parse(Source& source);
 
+    TOMLArray(const SourceLocation& location, const std::vector<const TOMLValue*>& values);
     TOMLArray(const std::vector<const TOMLValue*>& values);
     ~TOMLArray();
 
@@ -154,8 +158,9 @@ private:
 
 struct TOMLString : public TOMLValue
 {
-    static TOMLString* parse(std::istringstream& stream, const bool literal);
+    static TOMLString* parse(Source& source, const bool literal);
 
+    TOMLString(const SourceLocation& location, const std::string& value, const bool literal);
     TOMLString(const std::string& value, const bool literal);
 
     Option<std::string> string() const override;
@@ -171,8 +176,9 @@ private:
 
 struct TOMLInteger : public TOMLValue
 {
-    static TOMLInteger* parse(std::istringstream& stream);
+    static TOMLInteger* parse(Source& source);
 
+    TOMLInteger(const SourceLocation& location, const int value);
     TOMLInteger(const int value);
 
     Option<int> integer() const override;
@@ -186,8 +192,9 @@ private:
 
 struct TOMLBoolean : public TOMLValue
 {
-    static TOMLBoolean* parse(std::istringstream& stream);
+    static TOMLBoolean* parse(Source& source);
 
+    TOMLBoolean(const SourceLocation& location, const bool value);
     TOMLBoolean(const bool value);
 
     Option<bool> boolean() const override;
@@ -201,7 +208,7 @@ private:
 
 struct TOMLEntry
 {
-    static TOMLEntry* parse(std::istringstream& stream);
+    static TOMLEntry* parse(Source& source);
 
     TOMLEntry(const std::string& key, const TOMLValue* value, const bool table = false);
     ~TOMLEntry();
@@ -213,7 +220,7 @@ struct TOMLEntry
     const TOMLValue* value;
 
 private:
-    static std::string parseKey(std::istringstream& stream);
+    static std::string parseKey(Source& source);
 
     static bool keyChar(const char c);
 
@@ -223,7 +230,7 @@ private:
 
 struct TOML
 {
-    static TOML* parse(std::istringstream& stream);
+    static TOML* parse(Source& source);
     static TOML* parse(const Path& path);
 
     TOML(const std::vector<const TOMLEntry*>& entries);

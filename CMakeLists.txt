@@ -14,6 +14,7 @@ add_executable(radial src/build.cpp
                       src/path.cpp
                       src/process.cpp
                       src/run.cpp
+                      src/source.cpp
                       src/toml.cpp
                       src/utils.cpp)
 

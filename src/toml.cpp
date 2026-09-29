@@ -1,18 +1,18 @@
 #include "toml.h"
 
-RadialTokenException::RadialTokenException(const std::string& expected, std::istringstream& stream) :
-    RadialConfigException(getMessage(expected, stream)) {}
+RadialTokenException::RadialTokenException(const std::string& expected, Source& source) :
+    RadialConfigException(getMessage(expected, source), source.location()) {}
 
-std::string RadialTokenException::getMessage(const std::string& expected, std::istringstream& stream)
+std::string RadialTokenException::getMessage(const std::string& expected, Source& source)
 {
     const std::string prefix = "Expected " + expected + ", but received ";
 
-    if (stream.eof())
+    if (source.eof())
     {
         return prefix + "end of file.";
     }
 
-    const char c = stream.peek();
+    const char c = source.peek();
 
     if (c == '\n')
     {
@@ -22,58 +22,33 @@ std::string RadialTokenException::getMessage(const std::string& expected, std::i
     return prefix + "\"" + std::string(1, c) + "\".";
 }
 
-void TOMLUtils::skipWhitespace(std::istringstream& stream, const bool multiline)
+TOMLValue* TOMLValue::parse(Source& source)
 {
-    while (stream.peek() == '#' || stream.peek() == ' ' || stream.peek() == '\t' || (multiline && stream.peek() == '\n'))
-    {
-        if (stream.peek() == '#')
-        {
-            while (!stream.eof() && stream.peek() != '\n')
-            {
-                stream.ignore();
-            }
-        }
+    source.skipWhitespace();
 
-        else
-        {
-            stream.ignore();
-        }
-    }
-}
-
-TOMLValue* TOMLValue::parse(std::istringstream& stream)
-{
-    TOMLUtils::skipWhitespace(stream);
-
-    const char c = stream.peek();
+    const char c = source.peek();
 
     if (c == '[')
     {
-        stream.ignore();
-
-        return TOMLArray::parse(stream);
+        return TOMLArray::parse(source);
     }
 
     if (c == '\'')
     {
-        stream.ignore();
-
-        return TOMLString::parse(stream, true);
+        return TOMLString::parse(source, true);
     }
 
     if (c == '"')
     {
-        stream.ignore();
-
-        return TOMLString::parse(stream, false);
+        return TOMLString::parse(source, false);
     }
 
     if (c == '-' || c == '+' || isdigit(c))
     {
-        return TOMLInteger::parse(stream);
+        return TOMLInteger::parse(source);
     }
 
-    return TOMLBoolean::parse(stream);
+    return TOMLBoolean::parse(source);
 }
 
 TOMLValue* TOMLValue::getDefault()
@@ -82,57 +57,60 @@ TOMLValue* TOMLValue::getDefault()
 
     if (!defaultValue)
     {
-        defaultValue = new TOMLValue();
+        defaultValue = new TOMLValue(SourceLocation(0, 0));
     }
 
     return defaultValue;
 }
 
+TOMLValue::TOMLValue(const SourceLocation& location) :
+    location(location) {}
+
 TOMLValue::~TOMLValue() {}
 
 Option<ListMap<std::string, const TOMLValue*>> TOMLValue::table() const
 {
-    return {};
+    return Option<ListMap<std::string, const TOMLValue*>>(location);
 }
 
 Option<std::vector<const TOMLValue*>> TOMLValue::array() const
 {
-    return {};
+    return Option<std::vector<const TOMLValue*>>(location);
 }
 
 Option<std::string> TOMLValue::string() const
 {
-    return {};
+    return Option<std::string>(location);
 }
 
 Option<int> TOMLValue::integer() const
 {
-    return {};
+    return Option<int>(location);
 }
 
 Option<bool> TOMLValue::boolean() const
 {
-    return {};
+    return Option<bool>(location);
 }
 
 void TOMLValue::write(std::ostringstream& stream) const {}
 
-TOMLTable* TOMLTable::parse(std::istringstream& stream)
+TOMLTable* TOMLTable::parse(Source& source)
 {
-    TOMLTable* table = new TOMLTable({});
+    TOMLTable* table = new TOMLTable(source.location(), {});
 
-    while (!stream.eof())
+    while (!source.eof())
     {
-        TOMLUtils::skipWhitespace(stream, true);
+        source.skipWhitespace(true);
 
-        if (stream.eof() || stream.peek() == '[')
+        if (source.eof() || source.peek() == '[')
         {
             break;
         }
 
         try
         {
-            const TOMLEntry* entry = TOMLEntry::parse(stream);
+            const TOMLEntry* entry = TOMLEntry::parse(source);
 
             table->entries.add(entry->key, entry);
         }
@@ -144,26 +122,30 @@ TOMLTable* TOMLTable::parse(std::istringstream& stream)
             throw;
         }
 
-        TOMLUtils::skipWhitespace(stream);
+        source.skipWhitespace();
 
-        if (stream.peek() != '\n')
+        if (source.peek() != '\n')
         {
             delete table;
 
-            throw RadialTokenException("newline", stream);
+            throw RadialTokenException("newline", source);
         }
     }
 
     return table;
 }
 
-TOMLTable::TOMLTable(const std::vector<const TOMLEntry*>& entries)
+TOMLTable::TOMLTable(const SourceLocation& location, const std::vector<const TOMLEntry*>& entries) :
+    TOMLValue(location)
 {
     for (const TOMLEntry* entry : entries)
     {
         this->entries.add(entry->key, entry);
     }
 }
+
+TOMLTable::TOMLTable(const std::vector<const TOMLEntry*>& entries) :
+    TOMLTable(SourceLocation(0, 0), entries) {}
 
 TOMLTable::~TOMLTable()
 {
@@ -182,7 +164,7 @@ Option<ListMap<std::string, const TOMLValue*>> TOMLTable::table() const
         values.add(key, entries.get(key)->value);
     }
 
-    return values;
+    return Option<ListMap<std::string, const TOMLValue*>>(location, values);
 }
 
 void TOMLTable::write(std::ostringstream& stream) const
@@ -193,22 +175,24 @@ void TOMLTable::write(std::ostringstream& stream) const
     }
 }
 
-TOMLArray* TOMLArray::parse(std::istringstream& stream)
+TOMLArray* TOMLArray::parse(Source& source)
 {
-    TOMLArray* array = new TOMLArray({});
+    TOMLArray* array = new TOMLArray(source.location(), {});
 
-    while (stream.peek() != ']')
+    source.get();
+
+    while (source.peek() != ']')
     {
-        TOMLUtils::skipWhitespace(stream, true);
+        source.skipWhitespace(true);
 
-        if (stream.peek() == ']')
+        if (source.peek() == ']')
         {
             break;
         }
 
         try
         {
-            array->values.push_back(TOMLValue::parse(stream));
+            array->values.push_back(TOMLValue::parse(source));
         }
 
         catch (const RadialConfigException& ex)
@@ -218,28 +202,31 @@ TOMLArray* TOMLArray::parse(std::istringstream& stream)
             throw;
         }
 
-        TOMLUtils::skipWhitespace(stream, true);
+        source.skipWhitespace(true);
 
-        if (stream.peek() == ',')
+        if (source.peek() == ',')
         {
-            stream.ignore();
+            source.get();
         }
     }
 
-    if (stream.peek() != ']')
+    if (source.peek() != ']')
     {
         delete array;
 
-        throw RadialTokenException("\"]\"", stream);
+        throw RadialTokenException("\"]\"", source);
     }
 
-    stream.ignore();
+    source.get();
 
     return array;
 }
 
+TOMLArray::TOMLArray(const SourceLocation& location, const std::vector<const TOMLValue*>& values) :
+    TOMLValue(location), values(values) {}
+
 TOMLArray::TOMLArray(const std::vector<const TOMLValue*>& values) :
-    values(values) {}
+    TOMLArray(SourceLocation(0, 0), values) {}
 
 TOMLArray::~TOMLArray()
 {
@@ -251,7 +238,7 @@ TOMLArray::~TOMLArray()
 
 Option<std::vector<const TOMLValue*>> TOMLArray::array() const
 {
-    return values;
+    return Option<std::vector<const TOMLValue*>>(location, values);
 }
 
 void TOMLArray::write(std::ostringstream& stream) const
@@ -277,27 +264,33 @@ void TOMLArray::write(std::ostringstream& stream) const
     stream << "\n]";
 }
 
-TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
+TOMLString* TOMLString::parse(Source& source, const bool literal)
 {
+    const SourceLocation location = source.location();
+
+    source.get();
+
     std::string value;
 
     if (literal)
     {
-        while (!stream.eof() && stream.peek() != '\'')
+        while (!source.eof() && source.peek() != '\'')
         {
-            value += stream.get();
+            value += source.get();
         }
     }
 
     else
     {
-        while (!stream.eof() && stream.peek() != '"')
+        while (!source.eof() && source.peek() != '"')
         {
-            const char c = stream.get();
+            const char c = source.get();
 
             if (c == '\\')
             {
-                const char escape = stream.get();
+                const SourceLocation location = source.location();
+
+                const char escape = source.get();
 
                 switch (escape)
                 {
@@ -337,7 +330,7 @@ TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
                         break;
 
                     default:
-                        throw RadialConfigException("Unrecognized escape sequence \"\\" + std::string(1, escape) + "\"");
+                        throw RadialConfigException("Unrecognized escape sequence \"\\" + std::string(1, escape) + "\"", location);
                 }
             }
 
@@ -348,22 +341,25 @@ TOMLString* TOMLString::parse(std::istringstream& stream, const bool literal)
         }
     }
 
-    if (stream.eof())
+    if (source.eof())
     {
-        throw RadialTokenException("closing quotation mark", stream);
+        throw RadialTokenException("closing quotation mark", source);
     }
 
-    stream.ignore();
+    source.get();
 
-    return new TOMLString(value, literal);
+    return new TOMLString(location, value, literal);
 }
 
+TOMLString::TOMLString(const SourceLocation& location, const std::string& value, const bool literal) :
+    TOMLValue(location), value(value), literal(literal) {}
+
 TOMLString::TOMLString(const std::string& value, const bool literal) :
-    value(value), literal(literal) {}
+    TOMLString(SourceLocation(0, 0), value, literal) {}
 
 Option<std::string> TOMLString::string() const
 {
-    return value;
+    return Option<std::string>(location, value);
 }
 
 void TOMLString::write(std::ostringstream& stream) const
@@ -427,24 +423,29 @@ void TOMLString::write(std::ostringstream& stream) const
     }
 }
 
-TOMLInteger* TOMLInteger::parse(std::istringstream& stream)
+TOMLInteger* TOMLInteger::parse(Source& source)
 {
+    const SourceLocation location = source.location();
+
     std::string value;
 
     do
     {
-        value += stream.get();
-    } while (isdigit(stream.peek()));
+        value += source.get();
+    } while (isdigit(source.peek()));
 
-    return new TOMLInteger(atoi(value.c_str()));
+    return new TOMLInteger(location, atoi(value.c_str()));
 }
 
+TOMLInteger::TOMLInteger(const SourceLocation& location, const int value) :
+    TOMLValue(location), value(value) {}
+
 TOMLInteger::TOMLInteger(const int value) :
-    value(value) {}
+    TOMLInteger(SourceLocation(0, 0), value) {}
 
 Option<int> TOMLInteger::integer() const
 {
-    return value;
+    return Option<int>(location, value);
 }
 
 void TOMLInteger::write(std::ostringstream& stream) const
@@ -452,31 +453,34 @@ void TOMLInteger::write(std::ostringstream& stream) const
     stream << value << '\n';
 }
 
+TOMLBoolean::TOMLBoolean(const SourceLocation& location, const bool value) :
+    TOMLValue(location), value(value) {}
+
 TOMLBoolean::TOMLBoolean(const bool value) :
-    value(value) {}
+    TOMLBoolean(SourceLocation(0, 0), value) {}
 
-TOMLBoolean* TOMLBoolean::parse(std::istringstream& stream)
+TOMLBoolean* TOMLBoolean::parse(Source& source)
 {
-    char data[4];
+    const SourceLocation location = source.location();
 
-    stream.read(data, 4);
+    const std::string str = source.read(4);
 
-    if (!strncmp(data, "true", 4))
+    if (str == "true")
     {
-        return new TOMLBoolean(true);
+        return new TOMLBoolean(location, true);
     }
 
-    if (!strncmp(data, "fals", 4) && stream.get() == 'e')
+    if (str == "fals" && source.get() == 'e')
     {
-        return new TOMLBoolean(false);
+        return new TOMLBoolean(location, false);
     }
 
-    throw RadialConfigException("Expected value.");
+    throw RadialConfigException("Expected value.", location);
 }
 
 Option<bool> TOMLBoolean::boolean() const
 {
-    return value;
+    return Option<bool>(location, value);
 }
 
 void TOMLBoolean::write(std::ostringstream& stream) const
@@ -492,40 +496,40 @@ void TOMLBoolean::write(std::ostringstream& stream) const
     }
 }
 
-TOMLEntry* TOMLEntry::parse(std::istringstream& stream)
+TOMLEntry* TOMLEntry::parse(Source& source)
 {
-    if (stream.peek() == '[')
+    if (source.peek() == '[')
     {
-        stream.ignore();
+        source.get();
 
-        TOMLUtils::skipWhitespace(stream);
+        source.skipWhitespace();
 
-        const std::string key = parseKey(stream);
+        const std::string key = parseKey(source);
 
-        TOMLUtils::skipWhitespace(stream);
+        source.skipWhitespace();
 
-        if (stream.peek() != ']')
+        if (source.peek() != ']')
         {
-            throw RadialTokenException("\"]\"", stream);
+            throw RadialTokenException("\"]\"", source);
         }
 
-        stream.ignore();
+        source.get();
 
-        return new TOMLEntry(key, TOMLTable::parse(stream), true);
+        return new TOMLEntry(key, TOMLTable::parse(source), true);
     }
 
-    const std::string key = parseKey(stream);
+    const std::string key = parseKey(source);
 
-    TOMLUtils::skipWhitespace(stream);
+    source.skipWhitespace();
 
-    if (stream.peek() != '=')
+    if (source.peek() != '=')
     {
-        throw RadialTokenException("\"=\"", stream);
+        throw RadialTokenException("\"=\"", source);
     }
 
-    stream.ignore();
+    source.get();
 
-    return new TOMLEntry(key, TOMLValue::parse(stream));
+    return new TOMLEntry(key, TOMLValue::parse(source));
 }
 
 TOMLEntry::TOMLEntry(const std::string& key, const TOMLValue* value, const bool table) :
@@ -555,19 +559,19 @@ void TOMLEntry::write(std::ostringstream& stream) const
     }
 }
 
-std::string TOMLEntry::parseKey(std::istringstream& stream)
+std::string TOMLEntry::parseKey(Source& source)
 {
-    if (!keyChar(stream.peek()))
+    if (!keyChar(source.peek()))
     {
-        throw RadialTokenException("key character", stream);
+        throw RadialTokenException("key character", source);
     }
 
     std::string key;
 
     do
     {
-        key += stream.get();
-    } while (keyChar(stream.peek()));
+        key += source.get();
+    } while (keyChar(source.peek()));
 
     return key;
 }
@@ -577,22 +581,22 @@ bool TOMLEntry::keyChar(const char c)
     return isalnum(c) || c == '_' || c == '-';
 }
 
-TOML* TOML::parse(std::istringstream& stream)
+TOML* TOML::parse(Source& source)
 {
     TOML* toml = new TOML({});
 
-    while (!stream.eof())
+    while (!source.eof())
     {
-        TOMLUtils::skipWhitespace(stream, true);
+        source.skipWhitespace(true);
 
-        if (stream.eof())
+        if (source.eof())
         {
             break;
         }
 
         try
         {
-            const TOMLEntry* entry = TOMLEntry::parse(stream);
+            const TOMLEntry* entry = TOMLEntry::parse(source);
 
             toml->entries.add(entry->key, entry);
         }
@@ -604,13 +608,13 @@ TOML* TOML::parse(std::istringstream& stream)
             throw;
         }
 
-        TOMLUtils::skipWhitespace(stream);
+        source.skipWhitespace();
 
-        if (!stream.eof() && stream.peek() != '\n')
+        if (!source.eof() && source.peek() != '\n')
         {
             delete toml;
 
-            throw RadialTokenException("newline", stream);
+            throw RadialTokenException("newline", source);
         }
     }
 
@@ -619,9 +623,9 @@ TOML* TOML::parse(std::istringstream& stream)
 
 TOML* TOML::parse(const Path& path)
 {
-    std::istringstream stream(path.read());
+    Source source(path.read());
 
-    return TOML::parse(stream);
+    return TOML::parse(source);
 }
 
 TOML::TOML(const std::vector<const TOMLEntry*>& entries)
