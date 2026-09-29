@@ -94,7 +94,7 @@ int Process::run(std::string cmd, const bool primary, const bool display)
     {
         while (true)
         {
-            if (!readHandle(outHandle) || !readHandle(errHandle))
+            if (!readHandle(outHandle) && !readHandle(errHandle))
             {
                 break;
             }
@@ -117,18 +117,7 @@ int Process::run(std::string cmd, const bool primary, const bool display)
         throw RadialException("Failed to get subprocess exit code.");
     }
 
-    if (!CloseHandle(procInfo.hProcess) || !CloseHandle(procInfo.hThread))
-    {
-        throw RadialException("Failed to close subprocess.");
-    }
-
-    if (display)
-    {
-        readHandle(outHandle);
-        readHandle(errHandle);
-    }
-
-    if (!CloseHandle(outHandle) || !CloseHandle(errHandle))
+    if (!CloseHandle(procInfo.hProcess) || !CloseHandle(procInfo.hThread) || !CloseHandle(outHandle) || !CloseHandle(errHandle))
     {
         throw RadialException("Failed to close subprocess.");
     }
