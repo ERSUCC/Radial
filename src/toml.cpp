@@ -515,7 +515,18 @@ TOMLEntry* TOMLEntry::parse(Source& source)
 
         source.get();
 
-        return new TOMLEntry(key, TOMLTable::parse(source), true);
+        TOMLEntry* entry = new TOMLEntry(key, TOMLTable::parse(source), true);
+
+        source.skipWhitespace();
+
+        if (!source.eof() && source.peek() != '\n' && source.peek() != '[')
+        {
+            delete entry;
+
+            throw RadialTokenException("entry", source);
+        }
+
+        return entry;
     }
 
     const std::string key = parseKey(source);
@@ -529,7 +540,18 @@ TOMLEntry* TOMLEntry::parse(Source& source)
 
     source.get();
 
-    return new TOMLEntry(key, TOMLValue::parse(source));
+    TOMLEntry* entry = new TOMLEntry(key, TOMLValue::parse(source));
+
+    source.skipWhitespace();
+
+    if (!source.eof() && source.peek() != '\n')
+    {
+        delete entry;
+
+        throw RadialTokenException("newline", source);
+    }
+
+    return entry;
 }
 
 TOMLEntry::TOMLEntry(const std::string& key, const TOMLValue* value, const bool table) :
@@ -606,15 +628,6 @@ TOML* TOML::parse(Source& source)
             delete toml;
 
             throw;
-        }
-
-        source.skipWhitespace();
-
-        if (!source.eof() && source.peek() != '\n')
-        {
-            delete toml;
-
-            throw RadialTokenException("newline", source);
         }
     }
 
