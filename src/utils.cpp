@@ -27,7 +27,26 @@ size_t Utils::numericVersion(const std::string& version)
 {
     const std::vector<std::string> sections = split(version, ".");
 
-    return atoll(sections[0].c_str()) * 65536 + atoll(sections[1].c_str()) * 256 + atoll(sections[2].c_str());
+    if (sections.size() != 3)
+    {
+        throw RadialException("Invalid version \"" + version + "\".");
+    }
+
+    return readSize(sections[0]) * 65536 + readSize(sections[1]) * 256 + readSize(sections[2]);
+}
+
+size_t Utils::readSize(const std::string& str)
+{
+    char* end = nullptr;
+
+    const size_t size = strtoull(str.c_str(), &end, 10);
+
+    if (!end || strncmp(end, "", 1))
+    {
+        throw RadialException("Invalid version component \"" + str + "\".");
+    }
+
+    return size;
 }
 
 std::string Utils::trim(const std::string& str)

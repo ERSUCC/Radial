@@ -23,11 +23,21 @@ std::unique_ptr<const TOML> Config::readConfig(const Path& root)
 
     std::unique_ptr<const TOML> config(TOML::parse(configPath));
 
-    const std::string radialVersion = config->get("radial_version")->string().get(RADIAL_VERSION);
+    const TOMLValue* versionValue = config->get("radial_version");
 
-    if (Utils::numericVersion(radialVersion) > Utils::numericVersion(RADIAL_VERSION))
+    const std::string radialVersion = versionValue->string().get(RADIAL_VERSION);
+
+    try
     {
-        Utils::warning("Current version is " + std::string(RADIAL_VERSION) + ", but configuration file specifies " + radialVersion + ". Some configuration features may not work properly.");
+        if (Utils::numericVersion(radialVersion) > Utils::numericVersion(RADIAL_VERSION))
+        {
+            Utils::warning("Current version is " + std::string(RADIAL_VERSION) + ", but configuration file specifies " + radialVersion + ". Some configuration features may not work properly.");
+        }
+    }
+
+    catch (const RadialException& ex)
+    {
+        throw RadialConfigException(ex.what(), versionValue->location);
     }
 
     return config;

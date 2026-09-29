@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string>
 #include <string.h>
 #include <vector>
@@ -15,6 +16,7 @@ struct Utils
     static void error(const std::string& message);
 
     static size_t numericVersion(const std::string& version);
+    static size_t readSize(const std::string& str);
 
     static std::string trim(const std::string& str);
     static std::string escapeQuotes(const std::string& str);
